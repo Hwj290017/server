@@ -1,28 +1,34 @@
 #include "connection.h"
 #include "EventLoop.h"
 #include "channel.h"
-#include "socket.h"
 #include <cerrno>
+#include <fcntl.h>
 #include <functional>
+#include <memory>
 #include <string>
+#include <sys/types.h>
 #include <unistd.h>
 
-Connection::Connection(Socket* sock, EventLoop* loop) : loop(loop), sock(sock), channel(nullptr), state(Connected)
+Connection::Connection(int fd, const EventLoop* loop) : fd(fd), loop(loop), state(Connected)
 {
     if (loop)
     { // 服务端
-        sock->setnonblocking();
-        channel = new Channel(loop, sock);
+        // 客户端非堵塞
+        fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
+        channel = std::make_unique<Channel>(fd, loop);
     }
 }
 
 Connection::~Connection()
 {
-    delete sock;
-    delete channel;
+    if (fd >= 0)
+    {
+        ::close(fd);
+        fd = -1;
+    }
 }
 
-void Connection::setDeleteConnectionCb(std::function<void(Socket*)> cb)
+void Connection::setDeleteConnectionCb(std::function<void(int)> cb)
 {
     deleteConnectionCb = std::move(cb);
 }
@@ -62,7 +68,7 @@ void Connection::readNonBlock()
     char buf[BUFFER];
     while (true)
     { // 由于使用非阻塞IO，读取客户端buffer，一次读取buf大小数据，直到全部读取完毕
-        ssize_t readNum = ::read(sock->getFd(), buf, sizeof(buf));
+        ssize_t readNum = ::read(fd, buf, sizeof(buf));
         if (readNum == -1 && errno == EINTR)
         { // 客户端正常中断、继续读取
             continue;
@@ -85,7 +91,6 @@ void Connection::writeNonBlock()
 {
     int dataSize = writeBuffer.length();
     int dataLeft = dataSize;
-    int fd = sock->getFd();
     const char* buf = writeBuffer.c_str();
     while (dataLeft > 0)
     {
@@ -117,7 +122,7 @@ void Connection::readBlock()
     while (true)
     {
         // 阻塞套接字读取数据
-        ssize_t readNum = ::read(sock->getFd(), buf, sizeof(buf));
+        ssize_t readNum = ::read(fd, buf, sizeof(buf));
         if (readNum <= 0)
         {
             if (errno == EINTR)
@@ -138,7 +143,6 @@ void Connection::writeBlock()
 {
     int dataSize = writeBuffer.length();
     int dataLeft = dataSize;
-    int fd = sock->getFd();
     const char* buf = writeBuffer.c_str();
     while (dataLeft > 0)
     {
@@ -170,11 +174,11 @@ void Connection::setWriteBuffer(const std::string& data)
 void Connection::close()
 {
     state = Closed;
-    deleteConnectionCb(sock);
+    deleteConnectionCb(fd);
 }
-const Socket* Connection::getSock() const
+int Connection::getSock() const
 {
-    return sock;
+    return fd;
 }
 
 Connection::State Connection::getState() const

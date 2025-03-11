@@ -1,26 +1,25 @@
 #ifndef ACCEPTOR_H
 #define ACCEPTOR_H
-#include <functional>
 
-#define PORT 8888
-#define LOCALHOST "127.0.0.1"
+#include <functional>
+#include <memory>
+
 class EventLoop;
-class Socket;
 class InetAddress;
 class Channel;
 class Acceptor
 {
   private:
-    EventLoop* loop;
-    Socket* sock;
-    Channel* acceptChannel;
-    std::function<void(Socket*)> newConnectionCb;
+    int fd;
+    const EventLoop* loop;
+    std::unique_ptr<Channel> channel;
+    std::function<void(int)> newConnectionCb;
 
   public:
-    Acceptor(EventLoop* loop);
+    Acceptor(const EventLoop* loop, const char* ip, int port);
     ~Acceptor();
     void acceptConnection() const;
-    void setNewConnectionCb(std::function<void(Socket*)>);
+    void setNewConnectionCb(std::function<void(int)>);
 };
 
 #endif

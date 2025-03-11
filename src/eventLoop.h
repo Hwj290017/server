@@ -1,14 +1,17 @@
 
 #ifndef EVENTLOOP_H
 #define EVENTLOOP_H
-class Epoll;
-class ThreadPool;
+
+#define MAX_EVENTS 1024
+
 class Channel;
+class epoll_event;
 class EventLoop
 {
   private:
-    Epoll* ep;
+    int epfd;
     bool quit;
+    epoll_event* events;
 
   public:
     EventLoop();

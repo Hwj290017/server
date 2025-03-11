@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <sys/epoll.h>
 #include <unistd.h>
-Channel::Channel(EventLoop* ep, Socket* sock) : ep(ep), sock(sock), events(0), revents(0), inEpoll(false)
+Channel::Channel(int fd, const EventLoop* loop) : fd(fd), ep(loop), events(0), revents(0), inEpoll(false)
 {
 }
 
@@ -19,7 +19,7 @@ void Channel::enableReading()
 
 int Channel::getFd() const
 {
-    return sock->getFd();
+    return fd;
 }
 uint32_t Channel::getEvents() const
 {
@@ -44,12 +44,12 @@ void Channel::setRevents(uint32_t revents)
     this->revents = revents;
 }
 
-void Channel::handleEvent()
+void Channel::handleEvent() const
 {
-    callback();
+    cb();
 }
 
 void Channel::setCallback(std::function<void()> cb)
 {
-    callback = cb;
+    this->cb = cb;
 }

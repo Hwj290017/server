@@ -1,5 +1,6 @@
 #ifndef CHANNEL_H
 #define CHANNEL_H
+
 #include "socket.h"
 #include <cstdint>
 #include <functional>
@@ -7,15 +8,15 @@ class EventLoop;
 class Channel
 {
   private:
-    EventLoop* ep;
-    Socket* sock;
+    int fd;
+    const EventLoop* ep;
     uint32_t events;
     uint32_t revents;
     bool inEpoll;
-    std::function<void()> callback;
+    std::function<void()> cb;
 
   public:
-    Channel(EventLoop* ep, Socket* sock);
+    Channel(int fd, const EventLoop* loop);
     ~Channel();
 
     void enableReading();
@@ -26,9 +27,8 @@ class Channel
     bool getInEpoll() const;
     void setInEpoll();
 
-    // void setEvents(uint32_t);
     void setRevents(uint32_t);
-    void handleEvent();
+    void handleEvent() const;
     void setCallback(std::function<void()>);
 };
 #endif
