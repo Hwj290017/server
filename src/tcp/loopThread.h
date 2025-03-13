@@ -2,7 +2,6 @@
 #define LOOPTHREAD_H
 
 #include <condition_variable>
-#include <memory>
 #include <mutex>
 #include <thread>
 

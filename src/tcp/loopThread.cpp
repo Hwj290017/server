@@ -1,17 +1,14 @@
 #include "loopThread.h"
 #include "EventLoop.h"
 #include <functional>
-#include <iostream>
 #include <mutex>
 #include <thread>
 
 LoopThread::LoopThread() : loop_(nullptr)
 {
-    std::cout << "loopThread created" << std::endl;
 }
 LoopThread::LoopThread(LoopThread&& other) noexcept : loop_(other.loop_), thread_(std::move(other.thread_))
 {
-    std::cout << "loopThread moved" << std::endl;
 }
 LoopThread::~LoopThread()
 {

@@ -1,7 +1,6 @@
 #ifndef CHANNEL_H
 #define CHANNEL_H
 
-#include "socket.h"
 #include <cstdint>
 #include <functional>
 class EventLoop;
