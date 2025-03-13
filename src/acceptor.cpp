@@ -8,7 +8,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-Acceptor::Acceptor(const EventLoop* loop, const char* ip, int port) : fd(-1), loop(loop)
+Acceptor::Acceptor(const EventLoop* loop, const char* ip, int port) : fd(-1), loop(loop), newConnectionCb([](int) {})
 {
     // 地址
     sockaddr_in addr;
@@ -25,6 +25,7 @@ Acceptor::Acceptor(const EventLoop* loop, const char* ip, int port) : fd(-1), lo
 
     channel = std::make_unique<Channel>(fd, loop);
     channel->setCallback(std::bind(&Acceptor::acceptConnection, this));
+    channel->enableReading();
 }
 
 Acceptor::~Acceptor()
@@ -51,5 +52,4 @@ void Acceptor::acceptConnection() const
 void Acceptor::setNewConnectionCb(std::function<void(int)> cb)
 {
     newConnectionCb = std::move(cb);
-    channel->enableReading();
 }

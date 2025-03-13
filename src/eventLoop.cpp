@@ -1,15 +1,17 @@
 #include "EventLoop.h"
 #include "channel.h"
 #include "util.h"
+#include <iostream>
 #include <sys/epoll.h>
 #include <unistd.h>
-
 EventLoop::EventLoop() : epfd(-1), quit(false), events(nullptr)
 {
     epfd = epoll_create(MAX_EVENTS);
     events = new epoll_event[MAX_EVENTS];
     errif(epfd == -1, "epoll create error");
+    std::cout << "EventLoop created" << std::endl;
 }
+
 EventLoop::~EventLoop()
 {
     quit = true;
