@@ -1,5 +1,5 @@
-#include "src/server.h"
-#include "src/connection.h"
+#include "server.h"
+#include "connection.h"
 #include <iostream>
 #include <memory>
 
