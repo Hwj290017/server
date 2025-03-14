@@ -18,5 +18,6 @@ class EventLoop
     ~EventLoop();
     void loop() const;
     void updateChannel(Channel*) const;
+    void closeChannel(const Channel*) const;
 };
 #endif

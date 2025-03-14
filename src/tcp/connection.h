@@ -1,6 +1,7 @@
 #ifndef CONNECTION_H
 #define CONNECTION_H
 
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <string>
@@ -13,34 +14,31 @@ class Connection
   public:
     enum State
     {
-        Invalid = 1,
-        Handshaking,
         Connected,
-        Closed,
-        Failed,
+        DisConnected,
+        WritedFull,
+        WritePart
     };
     // loop为nullptr表示客户端建立的
     Connection(int fd, const EventLoop* loop = nullptr);
     ~Connection();
 
-    // 从套接字读到缓冲区
-    void read();
-    // 从缓冲区写到套接字
-    void write();
-    // 读取缓冲区
-    std::string getReadBuffer();
-    // 写入缓冲区
-    void setWriteBuffer(const std::string& data);
+    // 读取数据
+    std::string read();
+    // 发送数据
+    State send(const char* data, size_t len);
+    State send(const std::string& data);
+    // 关闭连接
+    void close();
+
     // 设置删除连接回调
-    void setDeleteConnectionCb(std::function<void(int)> cb);
+    void setCloseCb(std::function<void(int)> cb);
     // 设置事件
-    void setOnConnectionCb(std::function<void(Connection*)> cb);
+    void setReadCb(std::function<void(Connection*)> cb);
     // 获取状态
     State getState() const;
     // 获取套接字
     int getSock() const;
-    // 关闭连接
-    void close();
 
   private:
     int fd;
@@ -49,17 +47,15 @@ class Connection
     State state;
     std::string readBuffer;
     std::string writeBuffer;
+    size_t writeDateLeft;
 
-    std::function<void(int)> deleteConnectionCb;
-    std::function<void(Connection*)> onConnectionCb;
-
+    std::function<void(int)> closeCb;
+    std::function<void(Connection*)> readCb;
+    // 处理事件
+    void handleEvent();
     // 非阻塞读
     void readNonBlock();
     // 非阻塞写
     void writeNonBlock();
-    // 阻塞读
-    void readBlock();
-    // 阻塞写
-    void writeBlock();
 };
 #endif

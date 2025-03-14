@@ -26,14 +26,14 @@ class Server
     // 连接池
     std::map<int, std::unique_ptr<Connection>> connections_;
     // 连接回调函数
-    std::function<void(Connection*)> onConnectionCb;
+    std::function<void(Connection*)> readCb;
 
   public:
     Server(const char* ip = LOCALHOST, int port = PORT);
     ~Server();
     void newConnection(int);
-    void deleteConnection(int);
-    void onConnection(std::function<void(Connection*)> cb);
+    void closeConnection(int);
+    void setReadCb(std::function<void(Connection*)> cb);
     void start();
 };
 #endif

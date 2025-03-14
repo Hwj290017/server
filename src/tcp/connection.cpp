@@ -1,7 +1,8 @@
 #include "connection.h"
-#include "EventLoop.h"
 #include "channel.h"
+#include "log.h"
 #include <cerrno>
+#include <cstddef>
 #include <fcntl.h>
 #include <functional>
 #include <memory>
@@ -11,58 +12,59 @@
 
 Connection::Connection(int fd, const EventLoop* loop) : fd(fd), loop(loop), state(Connected)
 {
-    if (loop)
-    { // 服务端
-        // 客户端非堵塞
-        fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
-        channel = std::make_unique<Channel>(fd, loop);
-    }
+    // 设置非阻塞IO
+    fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
+    // 创建channel
+    channel = std::make_unique<Channel>(fd, loop);
+    std::function<void()> readCb = std::bind(&Connection::handleEvent, this);
+    channel->setReadCb(readCb);
+    channel->enableRead();
 }
 
 Connection::~Connection()
 {
-    if (fd >= 0)
+    channel->close();
+    if (fd != -1)
     {
         ::close(fd);
         fd = -1;
     }
 }
 
-void Connection::setDeleteConnectionCb(std::function<void(int)> cb)
-{
-    deleteConnectionCb = std::move(cb);
-}
-
-void Connection::setOnConnectionCb(std::function<void(Connection*)> cb)
-{
-    onConnectionCb = std::move(cb);
-    channel->setCallback(std::bind(onConnectionCb, this));
-    channel->enableReading();
-}
-
-void Connection::read()
+std::string Connection::read()
 {
     if (state == Connected)
     {
         readBuffer.clear();
-        if (loop)
-            readNonBlock();
-        else
-            readBlock();
+        readNonBlock();
+        return readBuffer;
     }
+    close();
+    return "";
 }
 
-void Connection::write()
+Connection::State Connection::send(const char* data, size_t len)
 {
     if (state == Connected)
     {
-        if (loop)
-            writeNonBlock();
+        writeBuffer.append(data, len);
+        writeDateLeft += len;
+        writeNonBlock();
+
+        if (writeDateLeft == 0)
+            return WritedFull;
         else
-            writeBlock();
-        writeBuffer.clear();
+            return WritePart;
     }
+    close();
+    return DisConnected;
 }
+
+Connection::State Connection::send(const std::string& data)
+{
+    return send(data.c_str(), data.length());
+}
+
 void Connection::readNonBlock()
 {
     char buf[BUFFER];
@@ -71,111 +73,86 @@ void Connection::readNonBlock()
         ssize_t readNum = ::read(fd, buf, sizeof(buf));
         if (readNum == -1 && errno == EINTR)
         { // 客户端正常中断、继续读取
+            logger << "EINTR\n";
             continue;
         }
         else if (readNum == -1 && ((errno == EAGAIN) || (errno == EWOULDBLOCK)))
         { // 非阻塞IO，这个条件表示数据全部读取完毕
+            logger << "EAGAIN\n";
             break;
         }
         else if (readNum == 0)
         { // EOF，客户端断开连接
-            state = Closed;
-            break;
+            state = DisConnected;
+            logger << "DisConnected\n";
+            close();
+            return;
         }
         // 读取成功
         readBuffer.append(buf, readNum);
+        logger << "read: " << readBuffer << "\n";
     }
 }
 
 void Connection::writeNonBlock()
 {
     int dataSize = writeBuffer.length();
-    int dataLeft = dataSize;
     const char* buf = writeBuffer.c_str();
-    while (dataLeft > 0)
+    while (writeDateLeft > 0)
     {
-        int writeNum = ::write(fd, buf + dataSize - dataLeft, dataLeft);
+        int writeNum = ::write(fd, buf + dataSize - writeDateLeft, writeDateLeft);
         if (writeNum == -1 && errno == EINTR)
         {
             // continue writing
+            logger << "EINTR\n";
             continue;
         }
         if (writeNum == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
         {
             // 写缓冲区满
+            logger << "EAGAIN\n";
             break;
         }
         if (writeNum == 0)
         {
             // Other error on client
-            state = State::Closed;
-            break;
+            state = DisConnected;
+            logger << "DisConnected\n";
+            close();
+            return;
         }
-        dataLeft -= writeNum;
+        writeDateLeft -= writeNum;
     }
-}
 
-void Connection::readBlock()
-{
-
-    char buf[BUFFER];
-    while (true)
+    if (writeDateLeft > 0)
     {
-        // 阻塞套接字读取数据
-        ssize_t readNum = ::read(fd, buf, sizeof(buf));
-        if (readNum <= 0)
-        {
-            if (errno == EINTR)
-                // continue reading
-                continue;
-            else
-            {
-                // Other error on client
-                state = State::Closed;
-                break;
-            };
-        }
-        readBuffer.append(buf, readNum);
+        channel->enableWrite();
     }
-}
-
-void Connection::writeBlock()
-{
-    int dataSize = writeBuffer.length();
-    int dataLeft = dataSize;
-    const char* buf = writeBuffer.c_str();
-    while (dataLeft > 0)
+    else
     {
-        int writeNum = ::write(fd, buf + dataSize - dataLeft, dataLeft);
-        if (writeNum <= 0)
-        {
-            if (errno == EINTR)
-                // continue writing
-                continue;
-            else
-            {
-                state = State::Closed;
-                break;
-            }
-        }
-        // 写入成功
-        dataLeft -= writeNum;
+        writeBuffer.clear();
     }
 }
-std::string Connection::getReadBuffer()
+
+void Connection::setCloseCb(std::function<void(int)> cb)
 {
-    return readBuffer;
+    closeCb = std::move(cb);
 }
 
-void Connection::setWriteBuffer(const std::string& data)
+void Connection::setReadCb(std::function<void(Connection*)> cb)
 {
-    writeBuffer.append(data);
+    readCb = std::move(cb);
 }
+void Connection::handleEvent()
+{
+    readCb(this);
+}
+
 void Connection::close()
 {
-    state = Closed;
-    deleteConnectionCb(fd);
+    closeCb(fd);
 }
+
 int Connection::getSock() const
 {
     return fd;

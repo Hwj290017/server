@@ -38,11 +38,11 @@ void EventLoop::updateChannel(Channel* channel) const
     if (channel)
     {
         int fd = channel->getFd();
-        uint32_t events = channel->getEvents();
+        uint32_t events = channel->getEvent();
         epoll_event ev;
         ev.data.ptr = channel;
         ev.events = events;
-        if (channel->getInEpoll())
+        if (channel->isInEpoll())
             errif(epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &ev) == -1, "epoll modify event error");
         else
         {
@@ -50,4 +50,9 @@ void EventLoop::updateChannel(Channel* channel) const
             channel->setInEpoll();
         }
     }
+}
+
+void EventLoop::closeChannel(const Channel* channel) const
+{
+    errif(epoll_ctl(epfd, EPOLL_CTL_DEL, channel->getFd(), nullptr) == -1, "epoll delete event error");
 }

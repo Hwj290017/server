@@ -6,28 +6,32 @@
 class EventLoop;
 class Channel
 {
-  private:
-    int fd;
-    const EventLoop* ep;
-    uint32_t events;
-    uint32_t revents;
-    bool inEpoll;
-    std::function<void()> cb;
-
   public:
     Channel(int fd, const EventLoop* loop);
     ~Channel();
 
-    void enableReading();
-
     int getFd() const;
-    uint32_t getEvents() const;
-    uint32_t getRevents() const;
-    bool getInEpoll() const;
+    uint32_t getEvent() const;
+    uint32_t getRevent() const;
+    bool isInEpoll() const;
     void setInEpoll();
+    void setRevent(uint32_t);
+    void setReadCb(std::function<void()>);
+    void setWriteCb(std::function<void()>);
 
-    void setRevents(uint32_t);
+    void enableRead();
+    void enableWrite();
+    void close();
+
     void handleEvent() const;
-    void setCallback(std::function<void()>);
+
+  private:
+    int fd_;
+    const EventLoop* loop_;
+    uint32_t event_;
+    uint32_t revent_;
+    bool inEpoll_;
+    std::function<void()> readCb_;
+    std::function<void()> writeCb_;
 };
 #endif
