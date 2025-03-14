@@ -1,6 +1,8 @@
 #include "util.h"
 #include <arpa/inet.h>
+#include <iostream>
 #include <stdio.h>
+#include <string>
 #include <sys/socket.h>
 #include <unistd.h>
 #define BUFFER_SIZE 32
@@ -20,14 +22,16 @@ int main()
 
     while (true)
     {
-        char buf[BUFFER_SIZE]; // 在这个版本，buf大小必须大于或等于服务器端buf大小，不然会出错，想想为什么？
-        int num = scanf("%s", buf);
-        ssize_t write_bytes = write(sockfd, buf, BUFFER_SIZE);
+        std::string input;
+        std::getline(std::cin, input);
+        ssize_t write_bytes = write(sockfd, input.c_str(), input.size());
         if (write_bytes == -1)
         {
-            printf("socket already disconnected, can't write any more!\n");
-            break;
+            std::cout << "write error" << std::endl;
         }
+        char buf[BUFFER_SIZE];
+        ssize_t read_bytes = read(sockfd, buf, BUFFER_SIZE);
+        std::cout << buf << std::endl;
     }
     close(sockfd);
     return 0;

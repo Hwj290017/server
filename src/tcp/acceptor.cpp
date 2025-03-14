@@ -24,12 +24,13 @@ Acceptor::Acceptor(const EventLoop* loop, const char* ip, int port) : fd(-1), lo
     fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
 
     channel = std::make_unique<Channel>(fd, loop);
-    channel->setCallback(std::bind(&Acceptor::acceptConnection, this));
-    channel->enableReading();
+    channel->setReadCb(std::bind(&Acceptor::acceptConnection, this));
+    channel->enableRead();
 }
 
 Acceptor::~Acceptor()
 {
+    channel->close();
     if (fd != -1)
     {
         close(fd);

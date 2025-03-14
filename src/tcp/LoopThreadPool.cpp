@@ -1,12 +1,12 @@
 #include "LoopThreadPool.h"
 #include "EventLoop.h"
+#include "log.h"
 #include "loopThread.h"
-#include <iostream>
 
 LoopThreadPool::LoopThreadPool(const EventLoop* mainLoop, int threadNum)
     : mainLoop_(mainLoop), threadNum_(threadNum), next_(0)
 {
-    std::cout << "LoopThreadPool created" << std::endl;
+    logger << "LoopThreadPool created\n";
 }
 
 LoopThreadPool::~LoopThreadPool()

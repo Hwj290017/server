@@ -2,10 +2,12 @@ cmake_minimum_required(VERSION 3.10)
 project(httpserver)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_BUILD_TYPE Debug)
+set(EXECUTABLE_OUTPUT_PATH  ${CMAKE_SOURCE_DIR}/bin)
+
 include_directories(./src/tcp)
 aux_source_directory(./src/tcp src_tcp)
 
 add_executable(server ${src_tcp} src/test/server.cpp)
 add_executable(client ${src_tcp} src/test/client.cpp)
 
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
