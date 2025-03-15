@@ -15,47 +15,43 @@ class Connection
     enum State
     {
         Connected,
-        DisConnected,
-        WritedFull,
-        WritePart
+        DisConnected
     };
     // loop为nullptr表示客户端建立的
-    Connection(int fd, const EventLoop* loop = nullptr);
+    Connection(int fd, EventLoop* loop = nullptr);
     ~Connection();
 
-    // 读取数据
-    std::string read();
     // 发送数据
-    State send(const char* data, size_t len);
-    State send(const std::string& data);
+    void send(const char* data, size_t len);
+    void send(const std::string& data);
     // 关闭连接
     void close();
 
     // 设置删除连接回调
     void setCloseCb(std::function<void(int)> cb);
     // 设置事件
-    void setReadCb(std::function<void(Connection*)> cb);
+    void setMessageCb(std::function<void(Connection*, const std::string&)> cb);
     // 获取状态
     State getState() const;
     // 获取套接字
     int getSock() const;
 
   private:
-    int fd;
-    const EventLoop* loop;
-    std::unique_ptr<Channel> channel;
-    State state;
-    std::string readBuffer;
-    std::string writeBuffer;
-    size_t writeDateLeft;
+    int fd_;
+    EventLoop* loop_;
+    std::unique_ptr<Channel> channel_;
+    State state_;
+    std::string readBuffer_;
+    std::string writeBuffer_;
+    size_t writeDataLeft_;
 
-    std::function<void(int)> closeCb;
-    std::function<void(Connection*)> readCb;
-    // 处理事件
-    void handleEvent();
+    std::function<void(int)> closeCb_;
+    std::function<void(Connection*, const std::string&)> messageCb_;
+    // 读事件处理
+    void handleRead();
+    // 写事件处理
+    void handleWrite();
     // 非阻塞读
-    void readNonBlock();
-    // 非阻塞写
-    void writeNonBlock();
+    void readNonBlock(char* data, size_t len);
 };
 #endif

@@ -6,9 +6,10 @@
 int main()
 {
     std::unique_ptr<Server> server(new Server());
-    server->setReadCb([](Connection* conn) {
+    server->setMessageCb([](Connection* conn, const std::string& data) {
         // 业务逻辑
-        std::string data = conn->read();
+        if (data.empty())
+            std::cout << "Now receive data from client: " << std::endl;
         std::cout << data << std::endl;
         conn->send(data);
     });

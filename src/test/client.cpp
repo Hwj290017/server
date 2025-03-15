@@ -1,5 +1,6 @@
 #include "util.h"
 #include <arpa/inet.h>
+#include <cstring>
 #include <iostream>
 #include <stdio.h>
 #include <string>
@@ -29,9 +30,13 @@ int main()
         {
             std::cout << "write error" << std::endl;
         }
-        char buf[BUFFER_SIZE];
-        ssize_t read_bytes = read(sockfd, buf, BUFFER_SIZE);
-        std::cout << buf << std::endl;
+        // char buf[BUFFER_SIZE];
+        // ssize_t read_bytes = read(sockfd, buf, BUFFER_SIZE);
+        // if (read_bytes == 0)
+        // {
+        //     std::cout << "read error" << std::endl;
+        // }
+        // std::cout << std::string(buf, read_bytes) << std::endl;
     }
     close(sockfd);
     return 0;

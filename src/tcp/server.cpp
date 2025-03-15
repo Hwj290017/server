@@ -12,13 +12,16 @@
 #include <memory>
 #include <unistd.h>
 
-Server::Server(const char* ip, int port) : mainLoop_(), threadPool_(&mainLoop_), readCb([](Connection* conn) {})
+Server::Server(const char* ip, int port)
+    : mainLoop_(), threadPool_(), messageCb_([](Connection* conn, const std::string&) {})
 {
+    std::cout << "Server created\n";
+
+    // 创建Acceptor
     acceptor_ = std::make_unique<Acceptor>(&mainLoop_, ip, port);
     // 设置回调函数
     std::function<void(int)> cb = std::bind(&Server::newConnection, this, std::placeholders::_1);
     acceptor_->setNewConnectionCb(cb);
-    logger << "Server created\n";
 }
 
 Server::~Server()
@@ -32,25 +35,27 @@ void Server::newConnection(int clientFd)
     std::unique_ptr<Connection> conn = std::make_unique<Connection>(clientFd, loop);
     // 设置回调函数
     conn->setCloseCb(std::bind(&Server::closeConnection, this, std::placeholders::_1));
-    conn->setReadCb(readCb);
+    conn->setMessageCb(messageCb_);
     connections_[clientFd] = std::move(conn);
-    logger << "new connection: " << clientFd << "\n";
+    Logger::logger << "new connection: " << clientFd << "\n";
+    Logger::logger.flush();
 }
 // 删除连接
 void Server::closeConnection(int clientFd)
 {
     connections_.erase(clientFd);
-    logger << "connection closed: " << clientFd << "\n";
+    std::cout << "connection closed: " << clientFd << "\n";
 }
 // 服务器注册读事件
-void Server::setReadCb(std::function<void(Connection*)> cb)
+void Server::setMessageCb(std::function<void(Connection*, const std::string&)> cb)
 {
-    readCb = std::move(cb);
+    messageCb_ = std::move(cb);
 }
 
 void Server::start()
 {
-    logger << "Server started\n";
+    // Logger::logger << "Server started\n";
+    Logger::logger.flush();
     // 启动线程池
     threadPool_.start();
     // 启动主事件循环

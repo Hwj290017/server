@@ -1,12 +1,10 @@
 #include "LoopThreadPool.h"
 #include "EventLoop.h"
-#include "log.h"
 #include "loopThread.h"
+#include <memory>
 
-LoopThreadPool::LoopThreadPool(const EventLoop* mainLoop, int threadNum)
-    : mainLoop_(mainLoop), threadNum_(threadNum), next_(0)
+LoopThreadPool::LoopThreadPool(int threadNum) : threadNum_(threadNum), next_(0)
 {
-    logger << "LoopThreadPool created\n";
 }
 
 LoopThreadPool::~LoopThreadPool()
@@ -18,8 +16,8 @@ void LoopThreadPool::start()
 {
     for (int i = 0; i < threadNum_; ++i)
     {
-        loopThreads_.emplace_back();
-        loops_.emplace_back(loopThreads_.back().startLoop());
+        loopThreads_.emplace_back(std::make_unique<LoopThread>());
+        loops_.emplace_back(loopThreads_.back()->startLoop());
     }
 }
 

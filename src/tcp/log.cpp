@@ -1,26 +1,24 @@
 #include "log.h"
 #include <ctime>
+#include <mutex>
 #include <time.h>
 
-Logger logger;
-
-Logger::Logger(const char* path) : path_(path)
+Logger::Logger(const char* path, Logger::Target target) : path_(path), target_(target)
 {
-    std::string tmp = ""; // 双引号下的常量不能直接相加，所以用一个std::string类型做转换
-    std::string welcome = tmp + "[Welcome] " + " " + time() + "=== Start logging ===\n";
     outfile_.open(path_);
-    if (!outfile_.is_open())
-        return;
-    outfile_ << welcome;
 }
-
 Logger::~Logger()
 {
 }
-
 const char* Logger::time()
 {
     time_t second;
     ::time(&second);
     return ctime(&second);
 }
+void Logger::flush()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    outfile_.flush();
+}
+Logger Logger::logger(LOGPATH);

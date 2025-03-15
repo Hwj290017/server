@@ -1,5 +1,6 @@
 #include "acceptor.h"
 #include "channel.h"
+#include "log.h"
 #include "util.h"
 #include <arpa/inet.h>
 #include <fcntl.h>

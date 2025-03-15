@@ -19,7 +19,7 @@ EventLoop::~EventLoop()
         epfd = -1;
     }
 }
-void EventLoop::loop() const
+void EventLoop::loop()
 {
     while (!quit)
     {
@@ -29,6 +29,13 @@ void EventLoop::loop() const
         {
             Channel* channel = reinterpret_cast<Channel*>(events[i].data.ptr);
             channel->handleEvent();
+        }
+
+        while (!tasks.empty())
+        {
+            std::function<void()>& task = tasks.front();
+            task();
+            tasks.pop();
         }
     }
 }
@@ -55,4 +62,9 @@ void EventLoop::updateChannel(Channel* channel) const
 void EventLoop::closeChannel(const Channel* channel) const
 {
     errif(epoll_ctl(epfd, EPOLL_CTL_DEL, channel->getFd(), nullptr) == -1, "epoll delete event error");
+}
+
+void EventLoop::runInLoop(std::function<void()> cb)
+{
+    tasks.push(std::move(cb));
 }

@@ -1,6 +1,5 @@
 #include "channel.h"
 #include "eventLoop.h"
-#include "log.h"
 #include <cstdint>
 #include <functional>
 #include <sys/epoll.h>
@@ -69,19 +68,16 @@ void Channel::handleEvent() const
 {
     if ((revent_ | EPOLLIN) && readCb_)
     {
-        logger << "read event: " << fd_ << "\n";
         readCb_();
     }
 
     if ((revent_ | EPOLLOUT) && writeCb_)
     {
-        logger << "write event: " << fd_ << "\n";
         writeCb_();
     }
 }
 
 void Channel::close()
 {
-    logger << "closing channel: " << fd_ << "\n";
     loop_->closeChannel(this);
 }
