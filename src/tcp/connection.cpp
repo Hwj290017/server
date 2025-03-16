@@ -56,14 +56,14 @@ void Connection::handleRead()
                 {
                     close();
                     std::cout << "Read DisConnected\n";
-                    return;
+                    break;
                 }
             }
             else if (readNum == 0)
             { // EOF，客户端断开连接
                 close();
                 std::cout << "Read DisConnected\n";
-                return;
+                break;
             }
             // 读取成功
             readBuffer_.append(buf, readNum);
@@ -104,7 +104,7 @@ size_t Connection::writeNonBlock(const char* data, size_t len)
                     // Other error on client
                     close();
                     std::cout << "Write DisConnected\n";
-                    return -1;
+                    break;
                 }
             }
             else if (writeNum == 0)
@@ -112,7 +112,7 @@ size_t Connection::writeNonBlock(const char* data, size_t len)
                 // Other error on client
                 close();
                 std::cout << "Write DisConnected\n";
-                return -1;
+                break;
             }
             dataLeft -= writeNum;
         }
@@ -165,14 +165,14 @@ void Connection::handleWrite()
     }
 }
 
-void Connection::setCloseCb(std::function<void(int)> cb)
+void Connection::setCloseCb(const std::function<void(int)>& cb)
 {
-    closeCb_ = std::move(cb);
+    closeCb_ = cb;
 }
 
-void Connection::setMessageCb(std::function<void(Connection*, const std::string&)> cb)
+void Connection::setMessageCb(const std::function<void(Connection*, const std::string&)>& cb)
 {
-    messageCb_ = std::move(cb);
+    messageCb_ = cb;
 }
 
 void Connection::close()
@@ -180,7 +180,7 @@ void Connection::close()
     if (state_ == Connected && closeCb_)
     {
         state_ = DisConnected;
-        loop_->runInLoop(std::bind(closeCb_, fd_));
+        closeCb_(fd_);
     }
 }
 

@@ -28,9 +28,9 @@ class Connection
     void close();
 
     // 设置删除连接回调
-    void setCloseCb(std::function<void(int)> cb);
+    void setCloseCb(const std::function<void(int)>& cb);
     // 设置事件
-    void setMessageCb(std::function<void(Connection*, const std::string&)> cb);
+    void setMessageCb(const std::function<void(Connection*, const std::string&)>& cb);
     // 获取状态
     State getState() const;
     // 获取套接字

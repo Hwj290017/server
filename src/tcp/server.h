@@ -34,7 +34,7 @@ class Server
     ~Server();
     void newConnection(int);
     void closeConnection(int);
-    void setMessageCb(std::function<void(Connection*, const std::string&)> cb);
+    void setMessageCb(const std::function<void(Connection*, const std::string&)>& cb);
     void start();
 };
 #endif

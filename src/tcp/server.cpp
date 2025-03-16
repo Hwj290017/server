@@ -37,13 +37,16 @@ void Server::newConnection(int clientFd)
 // 删除连接
 void Server::closeConnection(int clientFd)
 {
-    connections_.erase(clientFd);
-    std::cout << "connection closed: " << clientFd << "\n";
+    // 由主线程删除连接
+    mainLoop_.runInLoop([this, clientFd]() {
+        this->connections_.erase(clientFd);
+        std::cout << "Connection " << clientFd << " closed\n";
+    });
 }
 // 服务器注册读事件
-void Server::setMessageCb(std::function<void(Connection*, const std::string&)> cb)
+void Server::setMessageCb(const std::function<void(Connection*, const std::string&)>& cb)
 {
-    messageCb_ = std::move(cb);
+    messageCb_ = cb;
 }
 
 void Server::start()
