@@ -1,70 +1,50 @@
-#include "EventLoop.h"
+#include "eventLoop.h"
 #include "channel.h"
-#include "util.h"
+#include "epoller.h"
+#include <functional>
+#include <memory>
 #include <sys/epoll.h>
 #include <unistd.h>
-EventLoop::EventLoop() : epfd(-1), quit(false), events(nullptr)
+#include <vector>
+EventLoop::EventLoop() : poller_(new Epoller()), tasks_()
 {
-    epfd = epoll_create(MAX_EVENTS);
-    events = new epoll_event[MAX_EVENTS];
-    errif(epfd == -1, "epoll create error");
 }
 
-EventLoop::~EventLoop()
-{
-    quit = true;
-    if (epfd >= 0)
-    {
-        close(epfd);
-        epfd = -1;
-    }
-}
+EventLoop::~EventLoop() = default;
 void EventLoop::loop()
 {
-    while (!quit)
+    while (true)
     {
-        int nfds = epoll_wait(epfd, events, MAX_EVENTS, -1);
-        errif(nfds == -1, "epoll wait error");
-        for (int i = 0; i < nfds; i++)
+        std::vector<Channel*> activeChannels;
+        poller_->poll(activeChannels, -1);
+        for (auto& channel : activeChannels)
         {
-            Channel* channel = reinterpret_cast<Channel*>(events[i].data.ptr);
             channel->handleEvent();
         }
 
-        while (!tasks.empty())
+        while (!tasks_.empty())
         {
-            std::function<void()>& task = tasks.front();
+            std::function<void()>& task = tasks_.front();
             task();
-            tasks.pop();
+            tasks_.pop();
         }
     }
 }
-
+void EventLoop::addChannel(Channel* channel) const
+{
+    poller_->addChannel(channel);
+}
 void EventLoop::updateChannel(Channel* channel) const
 {
-    if (channel)
-    {
-        int fd = channel->getFd();
-        uint32_t events = channel->getEvent();
-        epoll_event ev;
-        ev.data.ptr = channel;
-        ev.events = events;
-        if (channel->isInEpoll())
-            errif(epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &ev) == -1, "epoll modify event error");
-        else
-        {
-            errif(epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev) == -1, "epoll add event error");
-            channel->setInEpoll();
-        }
-    }
+    poller_->updateChannel(channel);
 }
 
-void EventLoop::closeChannel(const Channel* channel) const
+void EventLoop::removeChannel(Channel* channel) const
 {
-    errif(epoll_ctl(epfd, EPOLL_CTL_DEL, channel->getFd(), nullptr) == -1, "epoll delete event error");
+    poller_->removeChannel(channel);
 }
 
-void EventLoop::runInLoop(std::function<void()> cb)
+void EventLoop::runInLoop(std::function<void()> task)
 {
-    tasks.push(std::move(cb));
+    tasks_.push(std::move(task));
 }

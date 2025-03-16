@@ -3,25 +3,28 @@
 #define EVENTLOOP_H
 
 #include <functional>
+#include <memory>
 #include <queue>
-#define MAX_EVENTS 1024
 
+#define MAX_EVENTS 1024
+class Poller;
 class Channel;
-class epoll_event;
 class EventLoop
 {
   private:
-    int epfd;
-    bool quit;
-    epoll_event* events;
-    std::queue<std::function<void()>> tasks;
+    std::unique_ptr<Poller> poller_;
+    // 任务队列，每次loop中执行
+    std::queue<std::function<void()>> tasks_;
 
   public:
     EventLoop();
     ~EventLoop();
+
+    // 事件驱动
     void loop();
+    void addChannel(Channel*) const;
     void updateChannel(Channel*) const;
-    void closeChannel(const Channel*) const;
-    void runInLoop(std::function<void()> cb);
+    void removeChannel(Channel*) const;
+    void runInLoop(std::function<void()> task);
 };
 #endif

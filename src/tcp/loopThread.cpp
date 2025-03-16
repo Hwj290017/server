@@ -7,9 +7,7 @@
 LoopThread::LoopThread() : loop_(nullptr)
 {
 }
-LoopThread::LoopThread(LoopThread&& other) noexcept : loop_(other.loop_), thread_(std::move(other.thread_))
-{
-}
+
 LoopThread::~LoopThread()
 {
     if (thread_.joinable())

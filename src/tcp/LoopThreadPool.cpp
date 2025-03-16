@@ -14,6 +14,7 @@ LoopThreadPool::~LoopThreadPool()
 // 创建子线程
 void LoopThreadPool::start()
 {
+    loopThreads_.reserve(threadNum_);
     for (int i = 0; i < threadNum_; ++i)
     {
         loopThreads_.emplace_back(std::make_unique<LoopThread>());

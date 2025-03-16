@@ -5,9 +5,9 @@
 #include <functional>
 #include <memory>
 #include <string>
+
 #define BUFFER 1024
 class EventLoop;
-class Socket;
 class Channel;
 class Connection
 {
@@ -51,7 +51,7 @@ class Connection
     void handleRead();
     // 写事件处理
     void handleWrite();
-    // 非阻塞读
-    void readNonBlock(char* data, size_t len);
+    // 非阻塞写
+    size_t writeNonBlock(const char* data, size_t len);
 };
 #endif

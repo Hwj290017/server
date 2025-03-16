@@ -1,7 +1,7 @@
 #include "connection.h"
 #include "channel.h"
 #include "eventLoop.h"
-#include "log.h"
+#include "util.h"
 #include <cerrno>
 #include <cstddef>
 #include <fcntl.h>
@@ -17,20 +17,19 @@ Connection::Connection(int fd, EventLoop* loop) : fd_(fd), loop_(loop), state_(C
     // 设置非阻塞IO
     fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
     // 创建channel
-    channel_ = std::make_unique<Channel>(fd, loop);
+    channel_ = std::make_unique<Channel>(fd);
     std::function<void()> readCb = std::bind(&Connection::handleRead, this);
     channel_->setReadCb(readCb);
     channel_->enableRead();
+    channel_->enableEt();
+    loop_->addChannel(channel_.get());
 }
 
 Connection::~Connection()
 {
-    channel_->close();
-    if (fd_ != -1)
-    {
-        ::close(fd_);
-        fd_ = -1;
-    }
+    loop_->removeChannel(channel_.get());
+    errif(fd_ < 0, "Invalid connection fd");
+    ::close(fd_);
 }
 
 void Connection::handleRead()
@@ -55,7 +54,6 @@ void Connection::handleRead()
                 }
                 else
                 {
-                    state_ = DisConnected;
                     close();
                     std::cout << "Read DisConnected\n";
                     return;
@@ -63,7 +61,6 @@ void Connection::handleRead()
             }
             else if (readNum == 0)
             { // EOF，客户端断开连接
-                state_ = DisConnected;
                 close();
                 std::cout << "Read DisConnected\n";
                 return;
@@ -80,7 +77,7 @@ void Connection::handleRead()
     }
 }
 
-void Connection::send(const char* data, size_t len)
+size_t Connection::writeNonBlock(const char* data, size_t len)
 {
     if (state_ == Connected)
     {
@@ -105,33 +102,42 @@ void Connection::send(const char* data, size_t len)
                 else
                 {
                     // Other error on client
-                    state_ = DisConnected;
                     close();
                     std::cout << "Write DisConnected\n";
-                    return;
+                    return -1;
                 }
             }
             else if (writeNum == 0)
             {
                 // Other error on client
-                state_ = DisConnected;
                 close();
                 std::cout << "Write DisConnected\n";
-                return;
+                return -1;
             }
-            std::cout << "Write: " << std::string(data + len - dataLeft, writeNum) << "\n";
             dataLeft -= writeNum;
         }
-        // 未写完的数据放入写缓冲区
-        if (dataLeft > 0)
+        return len - dataLeft;
+    }
+    return -1;
+}
+
+void Connection::send(const char* data, size_t len)
+{
+    if (state_ == Connected)
+    {
+        size_t writeNum = writeNonBlock(data, len);
+        if (writeNum < 0)
+            return;
+        if (writeNum < len)
         {
-            writeBuffer_.append(data + len - dataLeft, dataLeft);
-            writeDataLeft_ += dataLeft;
+            // 未写完的数据放入写缓冲区
+            writeBuffer_.append(data + writeNum, len - writeNum);
+            writeDataLeft_ += (len - writeNum);
             channel_->enableWrite();
+            loop_->updateChannel(channel_.get());
         }
     }
 }
-
 void Connection::send(const std::string& data)
 {
     return send(data.c_str(), data.length());
@@ -142,39 +148,17 @@ void Connection::handleWrite()
     if (state_ == Connected)
     {
         int len = writeBuffer_.length();
-        const char* buf = writeBuffer_.c_str();
+        const char* data = writeBuffer_.c_str();
 
-        while (writeDataLeft_ > 0)
-        {
-            int writeNum = ::write(fd_, buf + len - writeDataLeft_, writeDataLeft_);
-            if (writeNum == -1 && errno == EINTR)
-            {
-                // continue writing
-                std::cout << "Write EINTR\n";
-                continue;
-            }
-            if (writeNum == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
-            {
-                // 写缓冲区满
-                std::cout << "Write EAGAIN\n";
-                break;
-            }
-
-            if (writeNum == 0)
-            {
-                // Other error on client
-                state_ = DisConnected;
-                close();
-                std::cout << "Write DisConnected\n";
-                return;
-            }
-            std::cout << "Write: " << std::string(buf + len - writeDataLeft_, writeNum) << "\n";
-            writeDataLeft_ -= writeNum;
-        }
-
+        size_t writeNum = writeNonBlock(data + len - writeDataLeft_, writeDataLeft_);
+        if (writeNum < 0)
+            return;
+        writeDataLeft_ -= writeNum;
         if (writeDataLeft_ > 0)
         {
+            // 未写完
             channel_->enableWrite();
+            loop_->updateChannel(channel_.get());
         }
         else
             writeBuffer_.clear();
@@ -193,9 +177,11 @@ void Connection::setMessageCb(std::function<void(Connection*, const std::string&
 
 void Connection::close()
 {
-    state_ = DisConnected;
-    if (closeCb_)
+    if (state_ == Connected && closeCb_)
+    {
+        state_ = DisConnected;
         loop_->runInLoop(std::bind(closeCb_, fd_));
+    }
 }
 
 int Connection::getSock() const

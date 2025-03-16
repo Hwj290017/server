@@ -1,10 +1,8 @@
 #include "server.h"
 #include "LoopThreadPool.h"
 #include "acceptor.h"
-#include "channel.h"
 #include "connection.h"
 #include "eventLoop.h"
-#include "log.h"
 #include <cerrno>
 #include <cfloat>
 #include <functional>
@@ -12,11 +10,9 @@
 #include <memory>
 #include <unistd.h>
 
-Server::Server(const char* ip, int port)
-    : mainLoop_(), threadPool_(), messageCb_([](Connection* conn, const std::string&) {})
+Server::Server(const char* ip, int port) : mainLoop_(), threadPool_()
 {
     std::cout << "Server created\n";
-
     // 创建Acceptor
     acceptor_ = std::make_unique<Acceptor>(&mainLoop_, ip, port);
     // 设置回调函数
@@ -37,8 +33,6 @@ void Server::newConnection(int clientFd)
     conn->setCloseCb(std::bind(&Server::closeConnection, this, std::placeholders::_1));
     conn->setMessageCb(messageCb_);
     connections_[clientFd] = std::move(conn);
-    Logger::logger << "new connection: " << clientFd << "\n";
-    Logger::logger.flush();
 }
 // 删除连接
 void Server::closeConnection(int clientFd)
@@ -54,8 +48,6 @@ void Server::setMessageCb(std::function<void(Connection*, const std::string&)> c
 
 void Server::start()
 {
-    // Logger::logger << "Server started\n";
-    Logger::logger.flush();
     // 启动线程池
     threadPool_.start();
     // 启动主事件循环
