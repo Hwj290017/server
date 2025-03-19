@@ -11,18 +11,15 @@ class Epoller : public Poller
     Epoller();
     ~Epoller() override;
     // 获取活跃的Channel
-    void poll(std::vector<Channel*>& activeChannels, int timeout) override;
-    // 注册Channel
-    void addChannel(Channel* channel) override;
+    void poll(std::vector<Channel*>& activeChannels, int timeout = -1) override;
     // 更新Channel
     void updateChannel(Channel* channel) override;
-    // 删除Channel
-    void removeChannel(Channel* channel) override;
     // 判断Channel是否注册
-    bool hasChannel(Channel* channel) override;
+    bool hasChannel(const Channel* channel) override;
 
   private:
     int epfd_;
-    epoll_event* events_;
+    epoll_event events_[MAX_EVENTS];
     std::unordered_map<int, Channel*> channels_;
+    static int createEpollFd_();
 };

@@ -2,32 +2,31 @@
 #include "channel.h"
 #include "eventLoop.h"
 #include "util.h"
+#include <cassert>
 #include <cerrno>
 #include <cstddef>
 #include <fcntl.h>
 #include <functional>
 #include <iostream>
-#include <memory>
+#include <mutex>
 #include <string>
 #include <sys/types.h>
 #include <unistd.h>
 
-Connection::Connection(int fd, EventLoop* loop) : fd_(fd), loop_(loop), state_(Connected)
+Connection::Connection(int fd, EventLoop* loop) : fd_(fd), loop_(loop), channel_(fd_), state_(Connected)
 {
     // 设置非阻塞IO
     fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
-    // 创建channel
-    channel_ = std::make_unique<Channel>(fd);
-    std::function<void()> readCb = std::bind(&Connection::handleRead, this);
-    channel_->setReadCb(readCb);
-    channel_->enableRead();
-    channel_->enableEt();
-    loop_->addChannel(channel_.get());
+
+    channel_.setReadCb(std::bind(&Connection::handleRead, this));
+    channel_.enableRead();
+    channel_.enableEt();
+    channel_.start();
+    loop_->updateChannel(&channel_);
 }
 
 Connection::~Connection()
 {
-    loop_->removeChannel(channel_.get());
     errif(fd_ < 0, "Invalid connection fd");
     ::close(fd_);
 }
@@ -40,29 +39,25 @@ void Connection::handleRead()
         while (true)
         { // 由于使用非阻塞IO，读取客户端buffer，一次读取buf大小数据，直到全部读取完毕
             ssize_t readNum = ::read(fd_, buf, sizeof(buf));
-            if (readNum == -1)
+            if (readNum < 0)
             { // 客户端正常中断、继续读取
                 if (errno == EINTR)
                 {
-                    std::cout << "Read EINTR\n";
                     continue;
                 }
                 else if (errno == EAGAIN || errno == EWOULDBLOCK)
                 { // 非阻塞IO，这个条件表示数据全部读取完毕
-                    std::cout << "Read EAGAIN\n";
                     break;
                 }
                 else
                 {
                     close();
-                    std::cout << "Read DisConnected\n";
                     break;
                 }
             }
             else if (readNum == 0)
             { // EOF，客户端断开连接
                 close();
-                std::cout << "Read DisConnected\n";
                 break;
             }
             // 读取成功
@@ -85,25 +80,22 @@ size_t Connection::writeNonBlock(const char* data, size_t len)
         while (dataLeft > 0)
         {
             int writeNum = ::write(fd_, data + len - dataLeft, dataLeft);
-            if (writeNum == -1)
+            if (writeNum < 0)
             {
                 if (errno == EINTR)
                 // continue writing
                 {
-                    std::cout << "Write EINTR\n";
                     continue;
                 }
                 else if (errno == EAGAIN || errno == EWOULDBLOCK)
                 {
                     // 写缓冲区满
-                    std::cout << "Write EAGAIN\n";
                     break;
                 }
                 else
                 {
                     // Other error on client
                     close();
-                    std::cout << "Write DisConnected\n";
                     break;
                 }
             }
@@ -111,7 +103,6 @@ size_t Connection::writeNonBlock(const char* data, size_t len)
             {
                 // Other error on client
                 close();
-                std::cout << "Write DisConnected\n";
                 break;
             }
             dataLeft -= writeNum;
@@ -125,17 +116,7 @@ void Connection::send(const char* data, size_t len)
 {
     if (state_ == Connected)
     {
-        size_t writeNum = writeNonBlock(data, len);
-        if (writeNum < 0)
-            return;
-        if (writeNum < len)
-        {
-            // 未写完的数据放入写缓冲区
-            writeBuffer_.append(data + writeNum, len - writeNum);
-            writeDataLeft_ += (len - writeNum);
-            channel_->enableWrite();
-            loop_->updateChannel(channel_.get());
-        }
+        loop_->runInLoop(std::bind(&Connection::sendInLoop, this, data, len));
     }
 }
 void Connection::send(const std::string& data)
@@ -157,39 +138,56 @@ void Connection::handleWrite()
         if (writeDataLeft_ > 0)
         {
             // 未写完
-            channel_->enableWrite();
-            loop_->updateChannel(channel_.get());
+            channel_.enableWrite();
+            loop_->updateChannel(&channel_);
         }
         else
             writeBuffer_.clear();
     }
 }
 
-void Connection::setCloseCb(const std::function<void(int)>& cb)
-{
-    closeCb_ = cb;
-}
-
-void Connection::setMessageCb(const std::function<void(Connection*, const std::string&)>& cb)
-{
-    messageCb_ = cb;
-}
-
 void Connection::close()
 {
-    if (state_ == Connected && closeCb_)
+    // 多个线程同时调用close
+    bool flag = false;
     {
-        state_ = DisConnected;
-        closeCb_(fd_);
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (state_ == Connected)
+        {
+            state_ = DisConnected;
+            flag = true;
+        }
+    }
+
+    if (flag)
+    {
+        loop_->runInLoop(std::bind(&Connection::closeInLoop, this));
     }
 }
 
-int Connection::getSock() const
+void Connection::closeInLoop()
 {
-    return fd_;
+    assert(state_ == DisConnected);
+    channel_.quit();
+    loop_->updateChannel(&channel_);
+    // 如果是别的线程调用close，还要等一个周期才会执行closeCb_
+    loop_->queueInLoop(std::bind(closeCb_, fd_));
 }
 
-Connection::State Connection::getState() const
+void Connection::sendInLoop(const char* data, size_t len)
 {
-    return state_;
+    if (state_ == Connected)
+    {
+        size_t writeNum = writeNonBlock(data, len);
+        if (writeNum < 0)
+            return;
+        if (writeNum < len)
+        {
+            // 未写完的数据放入写缓冲区
+            writeBuffer_.append(data + writeNum, len - writeNum);
+            writeDataLeft_ += (len - writeNum);
+            channel_.enableWrite();
+            loop_->updateChannel(&channel_);
+        }
+    }
 }

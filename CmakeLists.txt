@@ -10,4 +10,5 @@ aux_source_directory(./src/tcp src_tcp)
 
 add_executable(server ${src_tcp} src/test/server.cpp)
 add_executable(client ${src_tcp} src/test/client.cpp)
+# add_executable(test ${src_tcp} src/test/test.cpp)
 

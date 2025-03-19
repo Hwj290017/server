@@ -1,23 +1,28 @@
 #ifndef ACCEPTOR_H
 #define ACCEPTOR_H
 
+#include "channel.h"
 #include <functional>
-#include <memory>
-class Channel;
 class EventLoop;
 class Acceptor
 {
   private:
-    int fd_;
     EventLoop* loop_;
-    std::unique_ptr<Channel> channel_;
+    int fd_;
+    Channel channel_;
+
     std::function<void(int)> newConnectionCb_;
+
+    static int createSocket(const char* ip, int port);
 
   public:
     Acceptor(EventLoop* loop, const char* ip, int port);
     ~Acceptor();
     void acceptConnection() const;
-    void setNewConnectionCb(std::function<void(int)>);
+    void setNewConnectionCb(const std::function<void(int)>& cb)
+    {
+        newConnectionCb_ = cb;
+    }
 };
 
 #endif

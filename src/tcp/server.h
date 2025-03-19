@@ -18,23 +18,35 @@ class ThreadPool;
 
 class Server
 {
-  private:
-    EventLoop mainLoop_;
-    // 子线程池
-    LoopThreadPool threadPool_;
-
-    std::unique_ptr<Acceptor> acceptor_;
-    // 连接池
-    std::map<int, std::unique_ptr<Connection>> connections_;
-    // 连接回调函数
-    std::function<void(Connection*, const std::string&)> messageCb_;
+    typedef std::function<void(Connection*, const std::string&)> MessageCb;
+    typedef std::unique_ptr<Connection> ConnectionPtr;
+    typedef std::unique_ptr<Acceptor> AcceptorPtr;
 
   public:
     Server(const char* ip = LOCALHOST, int port = PORT);
     ~Server();
+    void start();
+    void setMessageCb(const MessageCb& cb)
+    {
+        messageCb_ = cb;
+    }
+    void setMessageCb(MessageCb&& cb)
+    {
+        messageCb_ = std::move(cb);
+    }
+
+  private:
+    EventLoop mainLoop_;
+    // 子线程池
+    LoopThreadPool threadPool_;
+    // 接收器
+    AcceptorPtr acceptor_;
+    // 连接池
+    std::map<int, ConnectionPtr> connections_;
+    // 连接回调函数
+    MessageCb messageCb_;
+
     void newConnection(int);
     void closeConnection(int);
-    void setMessageCb(const std::function<void(Connection*, const std::string&)>& cb);
-    void start();
 };
 #endif

@@ -20,15 +20,21 @@ Server::Server(const char* ip, int port) : mainLoop_(), threadPool_()
     acceptor_->setNewConnectionCb(cb);
 }
 
-Server::~Server()
+Server::~Server() = default;
+
+void Server::start()
 {
+    // 启动线程池
+    threadPool_.start();
+    // 启动主事件循环
+    mainLoop_.loop();
 }
 
 // 对客户端套接字建立新连接
 void Server::newConnection(int clientFd)
 {
     EventLoop* loop = threadPool_.nextLoop();
-    std::unique_ptr<Connection> conn = std::make_unique<Connection>(clientFd, loop);
+    ConnectionPtr conn = std::make_unique<Connection>(clientFd, loop);
     // 设置回调函数
     conn->setCloseCb(std::bind(&Server::closeConnection, this, std::placeholders::_1));
     conn->setMessageCb(messageCb_);
@@ -42,17 +48,4 @@ void Server::closeConnection(int clientFd)
         this->connections_.erase(clientFd);
         std::cout << "Connection " << clientFd << " closed\n";
     });
-}
-// 服务器注册读事件
-void Server::setMessageCb(const std::function<void(Connection*, const std::string&)>& cb)
-{
-    messageCb_ = cb;
-}
-
-void Server::start()
-{
-    // 启动线程池
-    threadPool_.start();
-    // 启动主事件循环
-    mainLoop_.loop();
 }

@@ -2,19 +2,19 @@
 #include "EventLoop.h"
 #include "channel.h"
 #include "util.h"
+#include <cassert>
 #include <cstdint>
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <vector>
-Epoller::Epoller() : epfd_(epoll_create(MAX_EVENTS)), events_(new epoll_event[MAX_EVENTS])
+Epoller::Epoller() : epfd_(createEpollFd_())
 {
-    errif(epfd_ < 0, "epoll_create error");
 }
 
 Epoller::~Epoller()
 {
+    assert(epfd_ >= 0);
     close(epfd_);
-    delete[] events_;
 }
 
 void Epoller::poll(std::vector<Channel*>& activeChannels, int timeout)
@@ -30,49 +30,40 @@ void Epoller::poll(std::vector<Channel*>& activeChannels, int timeout)
     }
 }
 
-void Epoller::addChannel(Channel* channel)
-{
-    if (channel)
-    {
-        int fd = channel->getFd();
-        uint32_t event = channel->getEvent();
-        errif(channels_.find(fd) != channels_.end(), "channel already added");
-
-        epoll_event ev;
-        ev.events = event;
-        ev.data.ptr = channel;
-        epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &ev);
-        channels_[fd] = channel;
-    }
-}
 void Epoller::updateChannel(Channel* channel)
 {
     if (channel)
     {
         int fd = channel->getFd();
         uint32_t event = channel->getEvent();
-        errif(channels_.find(fd) == channels_.end(), "channel not added");
-
         epoll_event ev;
         ev.events = event;
         ev.data.ptr = channel;
-        epoll_ctl(epfd_, EPOLL_CTL_MOD, fd, &ev);
+        auto it = channels_.find(fd);
+        if (channel->isQuit())
+        {
+            // 删除
+            assert(it != channels_.end());
+            epoll_ctl(epfd_, EPOLL_CTL_DEL, fd, nullptr);
+        }
+        else
+        {
+            if (it == channels_.end())
+            {
+                // 添加
+                channels_[fd] = channel;
+                epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &ev);
+            }
+            else
+            {
+                // 修改
+                epoll_ctl(epfd_, EPOLL_CTL_MOD, fd, &ev);
+            }
+        }
     }
 }
 
-void Epoller::removeChannel(Channel* channel)
-{
-    if (channel)
-    {
-        int fd = channel->getFd();
-        errif(channels_.find(fd) == channels_.end(), "channel not added");
-
-        epoll_ctl(epfd_, EPOLL_CTL_DEL, fd, nullptr);
-        channels_.erase(fd);
-    }
-}
-
-bool Epoller::hasChannel(Channel* channel)
+bool Epoller::hasChannel(const Channel* channel)
 {
     if (channel)
     {
@@ -80,4 +71,11 @@ bool Epoller::hasChannel(Channel* channel)
         return channels_.find(fd) != channels_.end();
     }
     return false;
+}
+
+int Epoller::createEpollFd_()
+{
+    int epfd = epoll_create1(EPOLL_CLOEXEC);
+    errif(epfd < 0, "epoll_create1 error");
+    return epfd;
 }
