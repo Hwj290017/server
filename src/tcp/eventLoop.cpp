@@ -1,22 +1,22 @@
 #include "eventLoop.h"
-#include "channel.h"
 #include "epoller.h"
-#include "timer.h"
-#include "timerqueue.h"
 #include "util.h"
 #include <cstdint>
-#include <functional>
 #include <iostream>
-#include <memory>
-#include <mutex>
-#include <queue>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
-#include <unistd.h>
 #include <vector>
+
+EventFd EventFd::createEventFd()
+{
+    int fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+    errif(fd < 0, "Failed to create eventfd");
+    return EventFd(fd);
+}
+
 EventLoop::EventLoop()
-    : wakeupFd_(createEventfd()), wakeupChannel_(wakeupFd_), poller_(new Epoller()), tasks_(), timerQueue_(this),
-      loopState_(Waiting), threadId_(std::this_thread::get_id())
+    : wakeupFd_(EventFd::createEventFd()), wakeupChannel_(&wakeupFd_), poller_(new Epoller()), tasks_(),
+      timerQueue_(this), loopState_(Waiting), threadId_(std::this_thread::get_id())
 {
     wakeupChannel_.setReadCb(std::bind(&EventLoop::handleRead, this));
     wakeupChannel_.enableRead();
@@ -43,6 +43,7 @@ void EventLoop::loop()
         loopState_ = HandlingEvents;
         for (auto channel : activeChannels)
         {
+            std::cout << "handle event" << channel->fd()->fd() << std::endl;
             channel->handleEvent();
         }
 
@@ -106,23 +107,15 @@ void EventLoop::queueInLoop(Task&& task)
 void EventLoop::handleRead()
 {
     uint64_t count = 1;
-    ssize_t n = ::read(wakeupFd_, &count, sizeof(count));
+    int n = wakeupFd_.read(reinterpret_cast<char*>(&count), sizeof(count));
     errif(n != sizeof(count), "Failed to read from eventfd");
 }
 
 void EventLoop::wakeup()
 {
     uint64_t count = 1;
-    ssize_t n = ::write(wakeupFd_, &count, sizeof(count));
+    int n = wakeupFd_.write(reinterpret_cast<char*>(&count), sizeof(count));
     errif(n != sizeof(count), "Failed to write to eventfd");
-}
-
-int EventLoop::createEventfd()
-
-{
-    int evtfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-    errif(evtfd < 0, "Failed to create eventfd");
-    return evtfd;
 }
 
 bool EventLoop::isLoopThread() const

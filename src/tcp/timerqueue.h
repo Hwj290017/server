@@ -1,5 +1,6 @@
 #ifndef TIMERQUEUE_H
 #define TIMERQUEUE_H
+#include "RWAbleFd.h"
 #include "channel.h"
 #include "timer.h"
 #include <cstdint>
@@ -8,8 +9,20 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <sys/time.h>
 
 class EventLoop;
+class TimerFd : public RWAbleFd
+{
+  public:
+    static TimerFd createTimerFd();
+    int setTime(int flag, const itimerspec* newTime, itimerspec* oldTime);
+
+  private:
+    TimerFd(int fd) : RWAbleFd(fd)
+    {
+    }
+};
 
 class TimerQueue
 {
@@ -26,7 +39,7 @@ class TimerQueue
 
   private:
     EventLoop* loop_;
-    int timefd_;
+    TimerFd timefd_;
     Channel channel_;
     // 下次触发时间，就是文件描述符的到期时间
     TimeSpec nextExpire_;

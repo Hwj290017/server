@@ -7,13 +7,24 @@
 #include <cstdint>
 #include <ctime>
 #include <functional>
-#include <sys/time.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
 #include <vector>
 
+TimerFd TimerFd::createTimerFd()
+{
+    int fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+    errif(fd < 0, "Failed to create timerfd");
+    return TimerFd(fd);
+}
+
+int TimerFd::setTime(int flag, const itimerspec* newTime, itimerspec* oldTime)
+{
+    return timerfd_settime(fd_, flag, newTime, oldTime);
+}
+
 TimerQueue::TimerQueue(EventLoop* loop)
-    : loop_(loop), timefd_(createTimerFd()), channel_(timefd_), nextExpire_(TimeSpec::inValidExpired),
+    : loop_(loop), timefd_(TimerFd::createTimerFd()), channel_(&timefd_), nextExpire_(TimeSpec::inValidExpired),
       callingExpiredTimers_(false)
 {
     channel_.setReadCb(std::bind(&TimerQueue::handleRead, this));
@@ -46,7 +57,7 @@ void TimerQueue::handleRead()
     TimeSpec::getNow(now);
     // 读出定时器
     uint64_t count = 0;
-    ssize_t n = ::read(timefd_, &count, sizeof(count));
+    ssize_t n = timefd_.read(&count, sizeof(count));
     errif(n != sizeof(count), "Failed to read timerfd");
 
     callingExpiredTimers_ = true;
@@ -72,13 +83,6 @@ void TimerQueue::handleRead()
     }
 }
 
-int TimerQueue::createTimerFd()
-{
-    int timerFd = ::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
-    errif(timerFd < 0, "Failed to create timerfd");
-    return timerFd;
-}
-
 // 统一在事件处理完调用
 void TimerQueue::updateTimerFd()
 {
@@ -98,7 +102,7 @@ void TimerQueue::updateTimerFd()
         // 周期设为0，表示只执行一次
         temp.it_interval.tv_sec = 0;
         temp.it_interval.tv_nsec = 0;
-        timerfd_settime(timefd_, TFD_TIMER_ABSTIME, &temp, nullptr);
+        timefd_.setTime(TFD_TIMER_ABSTIME, &temp, nullptr);
         nextExpire_ = earlyExpired;
     }
 }

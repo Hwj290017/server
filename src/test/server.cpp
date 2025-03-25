@@ -1,14 +1,20 @@
-#include "server.h"
-#include "connection.h"
+#include "TcpConnection.h"
+#include "TcpServer.h"
+#include "buffer.h"
+#include "timer.h"
 #include <iostream>
 #include <memory>
 
 int main()
 {
-    std::unique_ptr<Server> server(new Server());
-    server->setMessageCb([](Connection* conn, const std::string& data) {
+    InetAddress addr(LOCALHOST, PORT);
+    std::unique_ptr<TcpServer> server(new TcpServer(addr));
+    server->setMessageCb([](TcpConnection* conn, const Buffer& data, const TimeSpec& time) {
         // 业务逻辑
-        std::cout << "Receive data from " << conn->getSock() << ": " << data << std::endl;
+        std::cout << "Receive data from " << conn->getFd() << ": ";
+        std::cout.write(data.begin(), data.size());
+        std::cout << std::endl;
+        conn->send(data.begin(), data.size());
     });
     server->start();
     return 0;

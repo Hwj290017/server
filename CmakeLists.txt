@@ -6,9 +6,11 @@ set(CMAKE_BUILD_TYPE Debug)
 set(EXECUTABLE_OUTPUT_PATH  ${CMAKE_SOURCE_DIR}/bin)
 
 include_directories(./src/tcp)
+include_directories(./src/http)
 aux_source_directory(./src/tcp src_tcp)
-
-add_executable(server ${src_tcp} src/test/server.cpp)
-add_executable(client ${src_tcp} src/test/client.cpp)
-# add_executable(test ${src_tcp} src/test/test.cpp)
+aux_source_directory(./src/http src_http)
+# add_executable(server ${src_tcp} src/test/server.cpp)
+add_executable(client ${src_tcp}  src/test/client.cpp)
+add_executable(httpserver ${src_tcp} ${src_http} src/test/httpServerTest.cpp)
+# add_executable(test ${src_tcp} ${src_http} src/test/test.cpp)
 

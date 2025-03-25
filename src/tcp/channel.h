@@ -3,16 +3,16 @@
 
 #include <cstdint>
 #include <functional>
-
+class RWAbleFd;
 class Channel
 {
     typedef std::function<void()> Task;
 
   public:
-    Channel(int fd) : fd_(fd), quit_(false), event_(0), revent_(0)
+    Channel(RWAbleFd* fd) : fd_(fd), event_(0), revent_(0), isQuit_(false)
     {
     }
-    ~Channel();
+    ~Channel() = default;
 
     void enableRead();
     void enableWrite();
@@ -21,13 +21,13 @@ class Channel
 
     void quit()
     {
-        quit_ = true;
+        isQuit_ = true;
     }
     void start()
     {
-        quit_ = false;
+        isQuit_ = false;
     }
-    int getFd() const
+    RWAbleFd* fd() const
     {
         return fd_;
     }
@@ -61,15 +61,15 @@ class Channel
     }
     bool isQuit()
     {
-        return quit_;
+        return isQuit_;
     }
 
   private:
-    int fd_;
-    bool quit_;
+    RWAbleFd* fd_;
     uint32_t event_;
     uint32_t revent_;
     Task readCb_;
     Task writeCb_;
+    bool isQuit_;
 };
 #endif

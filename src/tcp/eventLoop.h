@@ -2,6 +2,7 @@
 #ifndef EVENTLOOP_H
 #define EVENTLOOP_H
 
+#include "RWAbleFd.h"
 #include "timer.h"
 #include "timerqueue.h"
 #include <functional>
@@ -12,6 +13,18 @@
 
 #define MAX_EVENTS 1024
 class Poller;
+
+class EventFd : public RWAbleFd
+{
+  public:
+    static EventFd createEventFd();
+
+  private:
+    EventFd(int fd) : RWAbleFd(fd)
+    {
+    }
+};
+
 class EventLoop
 {
     typedef std::function<void()> Task;
@@ -50,7 +63,7 @@ class EventLoop
         Waiting
     };
 
-    int wakeupFd_;
+    EventFd wakeupFd_;
     Channel wakeupChannel_;
     std::unique_ptr<Poller> poller_;
     TimerQueue timerQueue_;
@@ -62,8 +75,6 @@ class EventLoop
     LoopState loopState_;
     // 唤醒时的回调函数
     void handleRead();
-
-    static int createEventfd();
 };
 
 #endif

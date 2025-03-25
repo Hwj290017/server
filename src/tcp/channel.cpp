@@ -3,12 +3,6 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 
-Channel::~Channel()
-{
-    assert(fd_ >= 0);
-    close(fd_);
-}
-
 void Channel::enableRead()
 {
     event_ |= EPOLLIN;

@@ -1,5 +1,6 @@
 #include "epoller.h"
 #include "EventLoop.h"
+#include "Socket.h"
 #include "channel.h"
 #include "util.h"
 #include <cassert>
@@ -34,7 +35,7 @@ void Epoller::updateChannel(Channel* channel)
 {
     if (channel)
     {
-        int fd = channel->getFd();
+        int fd = channel->fd()->fd();
         uint32_t event = channel->getEvent();
         epoll_event ev;
         ev.events = event;
@@ -67,7 +68,7 @@ bool Epoller::hasChannel(const Channel* channel)
 {
     if (channel)
     {
-        int fd = channel->getFd();
+        int fd = channel->fd()->fd();
         return channels_.find(fd) != channels_.end();
     }
     return false;

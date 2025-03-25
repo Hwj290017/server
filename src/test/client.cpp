@@ -6,7 +6,7 @@
 #include <string>
 #include <sys/socket.h>
 #include <unistd.h>
-#define BUFFER_SIZE 32
+#define BUFFER_SIZE 1024
 
 int main()
 {
@@ -23,20 +23,24 @@ int main()
 
     while (true)
     {
+        std::string data = "GET /index.html HTTP/1.1\r\n"
+                           "Host: www.chenshuo.com\r\n"
+                           "\r\n";
         std::string input;
         std::getline(std::cin, input);
-        ssize_t write_bytes = write(sockfd, input.c_str(), input.size());
+        data += input;
+        ssize_t write_bytes = write(sockfd, data.c_str(), data.size());
         if (write_bytes == -1)
         {
             std::cout << "write error" << std::endl;
         }
-        // char buf[BUFFER_SIZE];
-        // ssize_t read_bytes = read(sockfd, buf, BUFFER_SIZE);
-        // if (read_bytes == 0)
-        // {
-        //     std::cout << "read error" << std::endl;
-        // }
-        // std::cout << std::string(buf, read_bytes) << std::endl;
+        char buf[BUFFER_SIZE];
+        ssize_t read_bytes = read(sockfd, buf, BUFFER_SIZE);
+        if (read_bytes == 0)
+        {
+            std::cout << "read error" << std::endl;
+        }
+        std::cout << std::string(buf, read_bytes) << std::endl;
     }
     close(sockfd);
     return 0;
