@@ -4,12 +4,11 @@
 #include "Socket.h"
 #include "buffer.h"
 #include "channel.h"
-#include "timer.h"
 #include <any>
 #include <cstddef>
-#include <functional>
 #include <mutex>
 #include <string>
+#include <utility>
 
 #define BUFFER 1024
 class EventLoop;
@@ -32,56 +31,37 @@ class TcpConnection
     void send(const std::string& data);
     // 关闭连接
     void close();
+    void closeAfter(double delay);
+    template <typename T> void setOnConnectionCb(T&& cb)
+    {
+        onConnectionCb_ = std::forward<T>(cb);
+    };
 
-    void setOnConnectionCb(const OnConnectionCb& cb)
-    {
-        onConnectionCb_ = cb;
-    };
-    void setOnConnectionCb(OnConnectionCb&& cb)
-    {
-        onConnectionCb_ = std::move(cb);
-    };
     // 设置删除连接回调
-    void setCloseCb(const CloseCb& cb)
+    template <typename T> void setCloseCb(T&& cb)
     {
-        closeCb_ = cb;
+        closeCb_ = std::forward<T>(cb);
     };
-    void setCloseCb(CloseCb&& cb)
-    {
-        closeCb_ = std::move(cb);
-    };
+
     // 设置事件
-    void setMessageCb(const MessageCb& cb)
+    template <typename T> void setMessageCb(T&& cb)
     {
-        messageCb_ = cb;
-    };
-    void setMessageCb(MessageCb&& cb)
-    {
-        messageCb_ = std::move(cb);
-    }
-    // 获取状态
-    State getState() const
-    {
-        return state_;
+        messageCb_ = std::forward<T>(cb);
     };
 
-    int getFd()
+    // 设置应用层的内容解析器
+    template <typename T> void setContext(T&& context)
     {
-        return socket_.fd();
+        context_ = std::forward<T>(context);
     }
 
-    void setContext(const std::any& context)
-    {
-        context_ = context;
-    }
-
-    void setContext(std::any&& context)
-    {
-        context_ = std::move(context);
-    }
-    std::any& getContext()
+    std::any& context()
     {
         return context_;
+    }
+    int id() const
+    {
+        return id_;
     }
 
   private:
@@ -110,6 +90,8 @@ class TcpConnection
     void handleWrite();
     // 非阻塞写
     int writeNonBlock(const char* data, size_t len);
+    // 非阻塞读到缓冲区
+    int readNonBlock();
 
     void sendInLoop(const char* data, size_t len);
     void closeInLoop();

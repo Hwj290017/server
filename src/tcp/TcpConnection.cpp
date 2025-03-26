@@ -2,8 +2,8 @@
 #include "Socket.h"
 #include "channel.h"
 #include "eventLoop.h"
+#include "log.h"
 #include "timer.h"
-#include "util.h"
 #include <cassert>
 #include <cerrno>
 #include <cstddef>
@@ -24,7 +24,6 @@ TcpConnection::TcpConnection(Socket&& socket, EventLoop* loop, const InetAddress
     channel_.setReadCb(std::bind(&TcpConnection::handleRead, this));
     channel_.enableRead();
     channel_.enableEt();
-    std::cout << "TcpConnection" << id << " created" << std::endl;
 }
 
 TcpConnection::~TcpConnection()
@@ -38,43 +37,60 @@ void TcpConnection::start()
 
 void TcpConnection::startInLoop()
 {
-
+    channel_.start();
     loop_->updateChannel(&channel_);
     if (onConnectionCb_)
         onConnectionCb_(this);
-    std::cout << "TcpConnection" << id_ << " realCreated" << std::endl;
+    Logger::logger << ("TcpConnection realCreated: " + std::to_string(id_));
+}
+
+void TcpConnection::send(const char* data, size_t len)
+{
+    if (state_ == Connected)
+    {
+        loop_->runInLoop(std::bind(&TcpConnection::sendInLoop, this, data, len));
+    }
+}
+void TcpConnection::send(const std::string& data)
+{
+    return send(data.c_str(), data.length());
+}
+
+void TcpConnection::handleWrite()
+{
+    if (state_ == Connected)
+    {
+        Logger::logger << ("TcpConnection handleWrite: " + std::to_string(id_));
+        auto writeNum = writeNonBlock(writeBuffer_.begin(), writeBuffer_.size());
+        if (writeNum < 0)
+        {
+            close();
+            return;
+        }
+
+        if (writeBuffer_.size() > 0)
+        {
+            // 未写完
+            channel_.enableWrite();
+            loop_->updateChannel(&channel_);
+        }
+        else
+            writeBuffer_.clear();
+    }
 }
 
 void TcpConnection::handleRead()
 {
     if (state_ == Connected)
     {
-        while (true)
+        Logger::logger << ("TcpConnection handleRead: " + std::to_string(id_));
+        auto readNum = readNonBlock();
+        if (readNum < 0)
         {
-            int readNum = readBuffer_.readSocket(socket_);
-            if (readNum < 0)
-            { // 客户端正常中断、继续读取
-                if (errno == EINTR)
-                {
-                    continue;
-                }
-                else if (errno == EAGAIN || errno == EWOULDBLOCK)
-                { // 非阻塞IO，这个条件表示数据全部读取完毕
-                    break;
-                }
-                else
-                {
-                    close();
-                    break;
-                }
-            }
-            else if (readNum == 0)
-            { // EOF，客户端断开连接
-                close();
-                break;
-            }
+            close();
         }
-        if (readBuffer_.size() > 0 && messageCb_)
+
+        else if (messageCb_)
         {
             messageCb_(this, readBuffer_, TimeSpec({10}));
             readBuffer_.clear();
@@ -86,10 +102,10 @@ int TcpConnection::writeNonBlock(const char* data, size_t len)
 {
     if (state_ == Connected)
     {
-        size_t dataLeft = len;
+        auto dataLeft = len;
         while (dataLeft > 0)
         {
-            int writeNum = socket_.write(data + len - dataLeft, dataLeft);
+            auto writeNum = socket_.write(data + len - dataLeft, dataLeft);
             if (writeNum < 0)
             {
                 if (errno == EINTR)
@@ -119,45 +135,39 @@ int TcpConnection::writeNonBlock(const char* data, size_t len)
     }
     return -1;
 }
-
-void TcpConnection::send(const char* data, size_t len)
+int TcpConnection::readNonBlock()
 {
-    if (state_ == Connected)
+    auto readNumSum = 0;
+    while (true)
     {
-        loop_->runInLoop(std::bind(&TcpConnection::sendInLoop, this, data, len));
-    }
-}
-void TcpConnection::send(const std::string& data)
-{
-    return send(data.c_str(), data.length());
-}
-
-void TcpConnection::handleWrite()
-{
-    if (state_ == Connected)
-    {
-        int writeNum = writeNonBlock(writeBuffer_.begin(), writeBuffer_.size());
-        if (writeNum < 0)
-        {
-            close();
-            return;
-        }
-
-        if (writeBuffer_.size() > 0)
-        {
-            // 未写完
-            channel_.enableWrite();
-            loop_->updateChannel(&channel_);
+        int readNum = readBuffer_.readSocket(socket_);
+        if (readNum <= 0)
+        { // 客户端正常中断、继续读取
+            if (errno == EINTR)
+            {
+                continue;
+            }
+            else if (errno == EAGAIN || errno == EWOULDBLOCK)
+            { // 非阻塞IO，这个条件表示数据全部读取完毕
+                return readNumSum;
+            }
+            else
+            {
+                // client断开连接
+                return -1;
+            }
         }
         else
-            writeBuffer_.clear();
+        {
+            readNumSum += readNum;
+        }
     }
 }
 
 void TcpConnection::close()
 {
     // 多个线程可能同时调用close
-    bool flag = false;
+    auto flag = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (state_ == Connected)
@@ -173,12 +183,17 @@ void TcpConnection::close()
     }
 }
 
+void TcpConnection::closeAfter(double delay)
+{
+    loop_->runAfter(std::bind(&TcpConnection::close, this), delay);
+}
+
 void TcpConnection::closeInLoop()
 {
     assert(state_ == DisConnected);
-    channel_.quit();
+    channel_.close();
     loop_->updateChannel(&channel_);
-    // 如果是别的线程调用close，还要等一个周期才会执行closeCb_
+    // 在事件处理完后才关闭连接
     loop_->queueInLoop(std::bind(closeCb_, id_));
 }
 
@@ -186,9 +201,10 @@ void TcpConnection::sendInLoop(const char* data, size_t len)
 {
     if (state_ == Connected)
     {
+        Logger::logger << ("TcpConnection sendInLoop: " + std::to_string(id_));
         if (len > 0)
         {
-            size_t writeNum = 0;
+            auto writeNum = 0;
             if (writeBuffer_.size() == 0)
             {
                 writeNum = writeNonBlock(data, len);

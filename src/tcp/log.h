@@ -2,10 +2,14 @@
 #define LOG_H
 
 #include <fstream>
+#include <iostream>
 #include <mutex>
+#include <queue>
 #include <string>
+#include <thread>
+#include <utility>
 
-#define LOGPATH "../log/1.log"
+#define LOGPATH "./log/1.log"
 class Logger
 {
   public:
@@ -17,8 +21,8 @@ class Logger
     };
     Logger(const char* path, Target target = Both);
     ~Logger();
-    template <typename T> Logger& operator<<(const T&);
-    void flush();
+    template <typename T> Logger& operator<<(T&& text);
+
     static Logger logger;
 
   private:
@@ -27,14 +31,28 @@ class Logger
     // 日志文件路径
     const std::string path_;
     Target target_;
+    std::thread writeThread_;
+    // 互斥锁
     std::mutex mutex_;
+    std::queue<std::string> queue_;
+
     const char* time();
+    void writeThreadFunc();
 };
 
-template <typename T> Logger& Logger::operator<<(const T& text)
+template <typename T> Logger& Logger::operator<<(T&& text)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    outfile_ << text;
+    if (target_ != File)
+    {
+        std::cout << std::forward<T>(text) << std::endl;
+    }
+
+    if (target_ != Terminal)
+    {
+        queue_.push(std::forward<T>(text + "\n"));
+    }
     return *this;
 }
+
 #endif
