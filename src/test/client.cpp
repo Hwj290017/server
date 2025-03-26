@@ -2,7 +2,6 @@
 #include <arpa/inet.h>
 #include <cstring>
 #include <iostream>
-#include <stdio.h>
 #include <string>
 #include <sys/socket.h>
 #include <unistd.h>

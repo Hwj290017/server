@@ -19,7 +19,7 @@ void Socket::listen() const
 
 Socket Socket::accept(InetAddress& addr) const
 {
-    int clientFd = ::accept4(fd_, (sockaddr*)&addr.addr_, &addr.addrLen_, SOCK_NONBLOCK | SOCK_CLOEXEC);
+    auto clientFd = ::accept4(fd_, (sockaddr*)&addr.addr_, &addr.addrLen_, SOCK_NONBLOCK | SOCK_CLOEXEC);
     errif(clientFd < 0, "accept error");
     return Socket(clientFd);
 }
@@ -31,7 +31,7 @@ void Socket::nonBlocking() const
 
 Socket Socket::createNonBlocking(const InetAddress& addr)
 {
-    int fd = ::socket(AF_INET, SOCK_STREAM, 0);
+    auto fd = ::socket(AF_INET, SOCK_STREAM, 0);
     errif(fd < 0, "create socket error");
     Socket sock(fd);
     sock.nonBlocking();

@@ -6,12 +6,15 @@
 #include <functional>
 
 class Timer;
+class TimeSpec;
 class TimerId
 {
   public:
     TimerId(const TimerId& other) : timer_(other.timer_), id_(other.id_)
     {
     }
+    // 由调用者保证线程安全
+    // void setTime(const TimeSpec& time);
 
   private:
     TimerId(Timer* timer, uint64_t id) : timer_(timer), id_(id)
@@ -61,9 +64,11 @@ class TimeSpec : public timespec
                          tv_nsec + static_cast<long>((delay - static_cast<time_t>(delay)) * 1e9) % 1000000000});
     }
     // 获取当前时间
-    static void getNow(TimeSpec& now)
+    static TimeSpec getNow()
     {
+        TimeSpec now;
         clock_gettime(CLOCK_MONOTONIC, &now);
+        return now;
     }
     // 无效时间
     const static TimeSpec inValidExpired;

@@ -11,7 +11,7 @@ class Epoller : public Poller
     Epoller();
     ~Epoller() override;
     // 获取活跃的Channel
-    void poll(std::vector<Channel*>& activeChannels, int timeout = -1) override;
+    std::vector<Channel*> poll(int timeout = -1) override;
     // 更新Channel
     void updateChannel(Channel* channel) override;
     // 判断Channel是否注册

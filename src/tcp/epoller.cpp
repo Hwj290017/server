@@ -1,13 +1,11 @@
 #include "epoller.h"
 #include "EventLoop.h"
-#include "Socket.h"
 #include "channel.h"
 #include "util.h"
 #include <cassert>
-#include <cstdint>
 #include <sys/epoll.h>
 #include <unistd.h>
-#include <vector>
+
 Epoller::Epoller() : epfd_(createEpollFd_())
 {
 }
@@ -18,25 +16,27 @@ Epoller::~Epoller()
     close(epfd_);
 }
 
-void Epoller::poll(std::vector<Channel*>& activeChannels, int timeout)
+std::vector<Channel*> Epoller::poll(int timeout)
 {
-    int eventsNum = epoll_wait(epfd_, events_, MAX_EVENTS, timeout);
+    auto eventsNum = epoll_wait(epfd_, events_, MAX_EVENTS, timeout);
     errif(eventsNum < 0, "epoll_wait error");
-    activeChannels.reserve(eventsNum);
-    for (int i = 0; i < eventsNum; ++i)
+    std::vector<Channel*> activeChannels(eventsNum);
+
+    for (auto i = 0; i < eventsNum; ++i)
     {
-        Channel* channel = static_cast<Channel*>(events_[i].data.ptr);
+        auto channel = static_cast<Channel*>(events_[i].data.ptr);
         channel->setRevent(events_[i].events);
-        activeChannels.emplace_back(channel);
+        activeChannels[i] = channel;
     }
+    return activeChannels;
 }
 
 void Epoller::updateChannel(Channel* channel)
 {
     if (channel)
     {
-        int fd = channel->fd()->fd();
-        uint32_t event = channel->getEvent();
+        auto fd = channel->fd();
+        auto event = channel->getEvent();
         epoll_event ev;
         ev.events = event;
         ev.data.ptr = channel;
@@ -68,7 +68,7 @@ bool Epoller::hasChannel(const Channel* channel)
 {
     if (channel)
     {
-        int fd = channel->fd()->fd();
+        auto fd = channel->fd();
         return channels_.find(fd) != channels_.end();
     }
     return false;
@@ -76,7 +76,7 @@ bool Epoller::hasChannel(const Channel* channel)
 
 int Epoller::createEpollFd_()
 {
-    int epfd = epoll_create1(EPOLL_CLOEXEC);
+    auto epfd = epoll_create1(EPOLL_CLOEXEC);
     errif(epfd < 0, "epoll_create1 error");
     return epfd;
 }

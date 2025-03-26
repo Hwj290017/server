@@ -12,6 +12,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 
 #define PORT 8888
 #define LOCALHOST "127.0.0.1"
@@ -30,21 +31,16 @@ class TcpServer
     TcpServer(const InetAddress& addr, const std::string& name = "TcpServer");
     ~TcpServer();
     void start();
-    void setOnConnectionCb(const OnConnectionCb& cb)
+    // 建立连接回调
+    template <typename T> void setOnConnectionCb(T&& cb)
     {
-        onConnectionCb_ = cb;
+        onConnectionCb_ = std::forward<T>(cb);
     }
-    void setOnConnectionCb(OnConnectionCb&& cb)
+
+    // 消息处理回调
+    template <typename T> void setMessageCb(T&& cb)
     {
-        onConnectionCb_ = std::move(cb);
-    }
-    void setMessageCb(const MessageCb& cb)
-    {
-        messageCb_ = cb;
-    }
-    void setMessageCb(MessageCb&& cb)
-    {
-        messageCb_ = std::move(cb);
+        messageCb_ = std::forward<T>(cb);
     }
 
   private:

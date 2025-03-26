@@ -14,7 +14,6 @@ class Buffer
     }
 
     void append(const char* data, int length);
-    void append(const std::string& data);
 
     void prepend(const char* data, int length);
     const char* findCRLF(const char* start) const;
@@ -54,9 +53,10 @@ class Buffer
     int readSocket(const Socket& socket);
 
   private:
+    // 确保有足够的后写空间
     void ableAppend(int length);
+    // 确保有足够的前写空间
     void ablePrepend(int length);
-    // void resetPre
 
     std::vector<char> data_;
     int beginIndex_;

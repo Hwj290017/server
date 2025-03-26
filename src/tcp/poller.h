@@ -6,7 +6,7 @@ class Poller
 {
   public:
     // 获取活跃的Channel
-    virtual void poll(std::vector<Channel*>& activeChannels, int timeout = -1) = 0;
+    virtual std::vector<Channel*> poll(int timeout = -1) = 0;
     // 更新Channel
     virtual void updateChannel(Channel* channel) = 0;
     // 判断Channel是否注册

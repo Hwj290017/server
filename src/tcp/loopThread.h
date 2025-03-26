@@ -10,7 +10,6 @@ class LoopThread
 {
   public:
     LoopThread();
-    LoopThread(LoopThread&&) noexcept;
     ~LoopThread();
     EventLoop* startLoop();
 

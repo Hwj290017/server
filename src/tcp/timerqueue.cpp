@@ -53,8 +53,8 @@ void TimerQueue::addTimerInLoop(Timer* rawPtr)
 
 void TimerQueue::handleRead()
 {
-    TimeSpec now;
-    TimeSpec::getNow(now);
+
+    auto now = TimeSpec::getNow();
     // 读出定时器
     uint64_t count = 0;
     ssize_t n = timefd_.read(&count, sizeof(count));

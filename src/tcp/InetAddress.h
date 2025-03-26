@@ -7,7 +7,9 @@ class InetAddress
 {
   public:
     InetAddress(const char* ip, uint16_t port);
-    InetAddress();
+    InetAddress()
+    {
+    }
     ~InetAddress() = default;
 
     sockaddr_in addr_;

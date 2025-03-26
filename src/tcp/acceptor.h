@@ -9,15 +9,18 @@
 class EventLoop;
 class Acceptor
 {
-    using CallBack = std::function<void(Socket&&, const InetAddress&)>;
+    using NewConnectionCb = std::function<void(Socket&&, const InetAddress&)>;
 
   public:
     Acceptor(EventLoop* loop, const InetAddress& addr);
     ~Acceptor();
+
+    // set a callback to be called when a new connection is accepted
     void handleRead() const;
-    void setNewConnectionCb(const CallBack& cb)
+
+    template <typename T> void setNewConnectionCb(T&& cb)
     {
-        newConnectionCb_ = cb;
+        newConnectionCb_ = std::forward<T>(cb);
     }
 
   private:
@@ -26,7 +29,7 @@ class Acceptor
     Channel channel_;
     InetAddress addr_;
 
-    CallBack newConnectionCb_;
+    NewConnectionCb newConnectionCb_;
 };
 
 #endif

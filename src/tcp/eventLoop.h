@@ -27,7 +27,7 @@ class EventFd : public RWAbleFd
 
 class EventLoop
 {
-    typedef std::function<void()> Task;
+    using Task = std::function<void()>;
 
   public:
     EventLoop();
@@ -40,10 +40,25 @@ class EventLoop
     void updateChannel(Channel*) const;
     // 是否有事件
     void hasChannel(const Channel*) const;
-    void runInLoop(const Task& task);
-    void runInLoop(Task&& task);
-    void queueInLoop(const Task& task);
-    void queueInLoop(Task&& task);
+    template <typename T> void runInLoop(T&& task)
+    {
+        if (isLoopThread())
+            task();
+        else
+            queueInLoop(std::forward<T>(task));
+    }
+
+    template <typename T> void queueInLoop(T&& task)
+    {
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            tasks_.push(task);
+        }
+        // 无论是不是当前线程，只要不是在处理事件都唤醒
+        if (loopState_ != HandlingEvents)
+            wakeup();
+    }
+
     bool isLoopThread() const;
     void wakeup();
     // time是时间点，timespec_get是获取当前时间点
@@ -52,6 +67,8 @@ class EventLoop
     TimerId runAfter(const Task& task, double delay);
     // 每隔interval秒启动一次task
     TimerId runEvery(const Task& task, double interval);
+    // 更新定时器
+    void updateTimer(const TimerId& timerId);
     // 移除定时器
     void removeTimer(TimerId& timerId);
 

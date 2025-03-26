@@ -25,7 +25,7 @@ void LoopThreadPool::start()
 // 返回一个EventLoop
 EventLoop* LoopThreadPool::nextLoop()
 {
-    EventLoop* loop = loops_[next_];
+    auto loop = loops_[next_];
     next_ = (next_ + 1) % threadNum_;
     return loop;
 }

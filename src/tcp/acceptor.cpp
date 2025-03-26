@@ -1,6 +1,7 @@
 #include "acceptor.h"
 #include "eventLoop.h"
-#include <iostream>
+#include "log.h"
+#include <string>
 
 Acceptor::Acceptor(EventLoop* loop, const InetAddress& addr)
     : loop_(loop), socket_(Socket::createNonBlocking(addr)), channel_(&socket_), addr_(addr)
@@ -17,7 +18,7 @@ Acceptor::Acceptor(EventLoop* loop, const InetAddress& addr)
 
 Acceptor::~Acceptor()
 {
-    channel_.quit();
+    channel_.close();
     loop_->updateChannel(&channel_);
 }
 
@@ -27,7 +28,7 @@ void Acceptor::handleRead() const
     InetAddress clientAddr;
 
     Socket clientSocket = socket_.accept(clientAddr);
-    std::cout << "Accept a connection" << clientSocket.fd() << std::endl;
+    Logger::logger << ("Accept a connection: " + std::to_string(clientSocket.fd()));
     // 交给server建立连接
     if (newConnectionCb_)
         newConnectionCb_(std::move(clientSocket), clientAddr);

@@ -1,8 +1,10 @@
 #ifndef CHANNEL_H
 #define CHANNEL_H
 
+#include "RWAbleFd.h"
 #include <cstdint>
 #include <functional>
+#include <utility>
 class RWAbleFd;
 class Channel
 {
@@ -19,7 +21,7 @@ class Channel
     void enableEt();
     void handleEvent() const;
 
-    void quit()
+    void close()
     {
         isQuit_ = true;
     }
@@ -27,15 +29,15 @@ class Channel
     {
         isQuit_ = false;
     }
-    RWAbleFd* fd() const
+    auto fd() const
     {
-        return fd_;
+        return fd_->fd();
     }
-    uint32_t getEvent() const
+    auto getEvent() const
     {
         return event_;
     }
-    uint32_t getRevent() const
+    auto getRevent() const
     {
         return revent_;
     }
@@ -47,19 +49,18 @@ class Channel
     {
         readCb_ = cb;
     }
-    void setReadCb(Task&& cb)
+
+    template <typename T> void setReadCb(T&& cb)
     {
-        readCb_ = std::move(cb);
+        readCb_ = std::forward<T>(cb);
     }
-    void setWriteCb(const Task& cb)
+
+    template <typename T> void setWriteCb(T&& cb)
     {
-        writeCb_ = cb;
+        writeCb_ = std::forward<T>(cb);
     }
-    void setWriteCb(Task&& cb)
-    {
-        writeCb_ = std::move(cb);
-    }
-    bool isQuit()
+
+    auto isQuit()
     {
         return isQuit_;
     }

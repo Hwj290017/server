@@ -19,11 +19,13 @@ void Channel::enableEt()
 }
 void Channel::handleEvent() const
 {
+    if (isQuit_)
+        return;
+
     if ((revent_ | EPOLLIN) && readCb_)
     {
         readCb_();
     }
-
     if ((revent_ | EPOLLOUT) && writeCb_)
     {
         writeCb_();
