@@ -1,46 +1,10 @@
-#include "util.h"
-#include <arpa/inet.h>
-#include <cstring>
-#include <iostream>
-#include <string>
-#include <sys/socket.h>
-#include <unistd.h>
-#define BUFFER_SIZE 1024
 
+#include "InetAddress.h"
+#include "Socket.h"
 int main()
 {
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    errif(sockfd == -1, "socket create error");
-
-    struct sockaddr_in serv_addr;
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    serv_addr.sin_port = htons(8888);
-
-    errif(connect(sockfd, (sockaddr*)&serv_addr, sizeof(serv_addr)) == -1, "socket connect error");
-
-    while (true)
-    {
-        std::string data = "GET /index.html HTTP/1.1\r\n"
-                           "Host: www.chenshuo.com\r\n"
-                           "\r\n";
-        std::string input;
-        std::getline(std::cin, input);
-        data += input;
-        ssize_t write_bytes = write(sockfd, data.c_str(), data.size());
-        if (write_bytes == -1)
-        {
-            std::cout << "write error" << std::endl;
-        }
-        char buf[BUFFER_SIZE];
-        ssize_t read_bytes = read(sockfd, buf, BUFFER_SIZE);
-        if (read_bytes == 0)
-        {
-            std::cout << "read error" << std::endl;
-        }
-        std::cout << std::string(buf, read_bytes) << std::endl;
-    }
-    close(sockfd);
-    return 0;
+    auto serverAddr = InetAddress("127.0.0.1", 8888);
+    auto serverSock = Socket::createBlocking();
+    serverSock.connect(serverAddr);
+    serverSock.write("hello world", 11);
 }

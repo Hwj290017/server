@@ -4,6 +4,7 @@
 #include "TcpServer.h"
 #include "timer.h"
 #include <functional>
+#include <utility>
 class EventLoop;
 class InetAddress;
 
@@ -24,9 +25,10 @@ class HttpServer
     // }
 
     /// Not thread safe, callback be registered before calling start().
-    void setHttpCallback(const HttpCallback& cb)
+
+    template <typename T> void setHttpCallback(T&& cb)
     {
-        httpCb_ = cb;
+        httpCb_ = std::forward<T>(cb);
     }
 
     // void setThreadNum(int numThreads)

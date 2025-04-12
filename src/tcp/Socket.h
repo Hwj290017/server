@@ -18,12 +18,13 @@ class Socket : public RWAbleFd
     ~Socket() = default;
 
     void listen() const;
-    void bind(const InetAddress& addr) const;
+    // 用于服务端接受连接
     Socket accept(InetAddress& clientAddr) const;
-    void nonBlocking() const;
-    // void connect(const InetAddress& addr);
-
-    static Socket createNonBlocking(const InetAddress& addr);
+    // 用于客户端连接服务器
+    void connect(const InetAddress& addr);
+    static Socket createServerSocket(const InetAddress& addr);
+    static Socket createNonBlocking();
+    static Socket createBlocking();
     // static Socket createEventSocket();
     // static Socket createTimerSocket();
 };

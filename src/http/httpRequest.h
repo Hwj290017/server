@@ -28,7 +28,7 @@ class HttpRequest
     {
     }
 
-    Method method() const
+    Method getMethod() const
     {
         return method_;
     }
@@ -95,7 +95,7 @@ class HttpRequest
         return result;
     }
 
-    Version version() const
+    Version getVersion() const
     {
         return version_;
     }
@@ -105,7 +105,7 @@ class HttpRequest
         version_ = version;
     }
 
-    const std::string& path() const
+    const std::string& getPath() const
     {
         return path_;
     }
@@ -115,7 +115,7 @@ class HttpRequest
         path_.assign(start, end);
     }
 
-    const std::string& query() const
+    const std::string& getQuery() const
     {
         return query_;
     }
@@ -125,7 +125,7 @@ class HttpRequest
         query_.assign(start, end);
     }
 
-    const TimeSpec& receiveTime() const
+    const TimeSpec& getReceiveTime() const
     {
         return receiveTime_;
     }
@@ -135,7 +135,7 @@ class HttpRequest
         receiveTime_ = time;
     }
 
-    const std::map<std::string, std::string>& headers() const
+    const std::map<std::string, std::string>& getHeaders() const
     {
         return headers_;
     }
@@ -144,7 +144,7 @@ class HttpRequest
 
     void addHeader(const char* start, const char* colon, const char* end);
 
-    const std::string& body() const
+    const std::string& getBody() const
     {
         return body_;
     }

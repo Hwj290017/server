@@ -5,6 +5,7 @@
 #include "buffer.h"
 #include "channel.h"
 #include <any>
+#include <atomic>
 #include <cstddef>
 #include <mutex>
 #include <string>
@@ -55,13 +56,30 @@ class TcpConnection
         context_ = std::forward<T>(context);
     }
 
-    std::any& context()
+    std::any& getContext()
     {
         return context_;
     }
-    int id() const
+    int getId() const
     {
         return id_;
+    }
+
+    State getState() const
+    {
+        return state_;
+    }
+    const InetAddress& getLocalAddr() const
+    {
+        return localAddr_;
+    }
+    const InetAddress& getPeerAddr() const
+    {
+        return peerAddr_;
+    }
+    const std::string& getName() const
+    {
+        return name_;
     }
 
   private:
@@ -72,14 +90,13 @@ class TcpConnection
     std::string name_;
     int id_;
     Channel channel_;
-    State state_;
+    std::atomic<State> state_;
     Buffer readBuffer_;
     Buffer writeBuffer_;
-    std::mutex mutex_;
 
-    // 连接成功回调
+    // 连接成功或连接关闭回调
     OnConnectionCb onConnectionCb_;
-    // 关闭连接回调
+    // 关闭连接回调，由TcpServer调用
     CloseCb closeCb_;
     // 只有有数据才会触发，读事件没有数据表示客户端关闭连接
     MessageCb messageCb_;

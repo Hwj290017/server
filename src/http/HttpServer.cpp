@@ -20,8 +20,11 @@ void HttpServer::start()
 
 void HttpServer::onConnection(TcpConnection* conn)
 {
-    assert(conn->getState() == TcpConnection::Connected);
-    conn->setContext(HttpContext());
+    if (conn->getState() == TcpConnection::Connected)
+        conn->setContext(HttpContext());
+    else
+    {
+    }
 }
 
 void HttpServer::onMessage(TcpConnection* conn, const Buffer& buf, const TimeSpec& receiveTime)
@@ -44,9 +47,10 @@ void HttpServer::onMessage(TcpConnection* conn, const Buffer& buf, const TimeSpe
 void HttpServer::onRequest(TcpConnection* conn, const HttpRequest& req)
 {
     const std::string& connection = req.getHeader("Connection");
-    bool close = connection == "close" || (req.version() == HttpRequest::Http10 && connection != "Keep-Alive");
+    bool close = connection == "close" || (req.getVersion() == HttpRequest::Http10 && connection != "Keep-Alive");
     HttpResponse response(close);
-    httpCb_(req, response);
+    if (httpCb_)
+        httpCb_(req, response);
     Buffer buf;
     response.message(buf);
     conn->send(buf.begin(), buf.size());

@@ -1,6 +1,7 @@
 #ifndef TIMER_H
 #define TIMER_H
 
+#include <atomic>
 #include <cstdint>
 #include <ctime>
 #include <functional>
@@ -78,38 +79,38 @@ class Timer
 {
   public:
     Timer(const std::function<void()>& cb, TimeSpec expired, double interval)
-        : cb(cb), expired(expired), interval(interval), id(count++)
+        : cb_(cb), expired_(expired), interval_(interval), id_(count_.fetch_add(1))
     {
     }
 
     void restart()
     {
-        expired.tv_sec += interval;
+        expired_.tv_sec += interval_;
     }
-    TimeSpec getExpired() const
+    TimeSpec expired() const
     {
-        return expired;
+        return expired_;
     }
     bool isRepeat() const
     {
-        return interval > 0;
+        return interval_ > 0;
     }
     void handleEvent() const
     {
-        if (cb)
-            cb();
+        if (cb_)
+            cb_();
     }
-    uint64_t getId() const
+    uint64_t id() const
     {
-        return id;
+        return id_;
     }
 
   private:
-    const std::function<void()> cb;
-    TimeSpec expired;
-    const double interval;
-    const uint64_t id;
-    static uint64_t count;
+    std::function<void()> cb_;
+    TimeSpec expired_;
+    double interval_;
+    const uint64_t id_;
+    static std::atomic<uint64_t> count_;
 };
 
 #endif // TIMER_H

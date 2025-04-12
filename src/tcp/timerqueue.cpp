@@ -41,14 +41,14 @@ TimerId TimerQueue::addTimer(const std::function<void()>& cb, const TimeSpec& wh
 {
     Timer* rawPtr = new Timer(cb, when, interval);
     loop_->runInLoop(std::bind(&TimerQueue::addTimerInLoop, this, rawPtr));
-    return TimerId(rawPtr, rawPtr->getId());
+    return TimerId(rawPtr, rawPtr->id());
 }
 
 // 只会在属于的loop中执行
 void TimerQueue::addTimerInLoop(Timer* rawPtr)
 {
     TimerPtr timer(rawPtr);
-    timers_[TimerIndex(rawPtr->getExpired(), rawPtr->getId())] = std::move(timer);
+    timers_[TimerIndex(rawPtr->expired(), rawPtr->id())] = std::move(timer);
 }
 
 void TimerQueue::handleRead()
@@ -75,10 +75,10 @@ void TimerQueue::handleRead()
     for (auto& timer : expiredTimers)
     {
         // 不在移除列表
-        if (timer->isRepeat() && removedTimers_.find(timer->getId()) == removedTimers_.end())
+        if (timer->isRepeat() && removedTimers_.find(timer->id()) == removedTimers_.end())
         {
             timer->restart();
-            timers_[TimerIndex(timer->getExpired(), timer->getId())] = std::move(timer);
+            timers_[TimerIndex(timer->expired(), timer->id())] = std::move(timer);
         }
     }
 }
@@ -93,7 +93,7 @@ void TimerQueue::updateTimerFd()
         return;
     }
     // 第一个定时器的到期时间
-    TimeSpec earlyExpired = timers_.begin()->second->getExpired();
+    TimeSpec earlyExpired = timers_.begin()->second->expired();
     // 有更早的定时器事件
     if (earlyExpired != nextExpire_)
     {
@@ -114,7 +114,7 @@ void TimerQueue::removeTimer(TimerId& timerId)
 
 void TimerQueue::removeTimerInLoop(TimerId timerId)
 {
-    TimerIndex index(timerId.timer_->getExpired(), timerId.timer_->getId());
+    TimerIndex index(timerId.timer_->expired(), timerId.timer_->id());
     auto target = timers_.find(index);
     if (target != timers_.end())
     {

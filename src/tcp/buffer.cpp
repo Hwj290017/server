@@ -67,7 +67,7 @@ void Buffer::ablePrepend(int length)
     char* str = data_.data();
     if (space >= length + pretendedLength)
     {
-        std::copy(str + beginIndex_, str + endIndex_, str + length);
+        std::copy_backward(str + beginIndex_, str + endIndex_, str + length + pretendedLength + size());
         endIndex_ = pretendedLength + length + size();
         beginIndex_ = pretendedLength + length;
     }

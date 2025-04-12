@@ -2,38 +2,44 @@
 #include "InetAddress.h"
 #include "util.h"
 #include <fcntl.h>
-
-void Socket::bind(const InetAddress& addr) const
-{
-    errif(::bind(fd_, (sockaddr*)&addr.addr_, addr.addrLen_) < 0, "bind error");
-}
+#include <sys/socket.h>
 
 void Socket::listen() const
 {
     errif(::listen(fd_, SOMAXCONN) < 0, "listen error");
 }
 
-// void Socket::connect(const InetAddress& addr)
-// {
-// }
+void Socket::connect(const InetAddress& addr)
+{
+    errif(::connect(fd_, (sockaddr*)&addr.addr_, addr.addrLen_) < 0, "connect error");
+}
 
 Socket Socket::accept(InetAddress& addr) const
 {
     auto clientFd = ::accept4(fd_, (sockaddr*)&addr.addr_, &addr.addrLen_, SOCK_NONBLOCK | SOCK_CLOEXEC);
+
     errif(clientFd < 0, "accept error");
     return Socket(clientFd);
 }
 
-void Socket::nonBlocking() const
+Socket Socket::createServerSocket(const InetAddress& addr)
 {
-    fcntl(fd_, F_SETFL, fcntl(fd_, F_GETFL) | O_NONBLOCK);
+    auto sock = createNonBlocking();
+    errif(::bind(sock.fd_, (sockaddr*)&addr.addr_, addr.addrLen_) < 0, "bind error");
+    return sock;
 }
 
-Socket Socket::createNonBlocking(const InetAddress& addr)
+Socket Socket::createNonBlocking()
 {
     auto fd = ::socket(AF_INET, SOCK_STREAM, 0);
     errif(fd < 0, "create socket error");
-    Socket sock(fd);
-    sock.nonBlocking();
-    return sock;
+    fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
+    return Socket(fd);
+}
+
+Socket Socket::createBlocking()
+{
+    auto fd = ::socket(AF_INET, SOCK_STREAM, 0);
+    errif(fd < 0, "create socket error");
+    return Socket(fd);
 }

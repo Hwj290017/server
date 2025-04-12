@@ -3,14 +3,16 @@
 
 #include <cstdint>
 #include <netinet/in.h>
+#include <string>
 class InetAddress
 {
   public:
     InetAddress(const char* ip, uint16_t port);
-    InetAddress()
+    InetAddress() : addrLen_(sizeof(addr_))
     {
     }
     ~InetAddress() = default;
+    std::string toIpPort() const;
 
     sockaddr_in addr_;
     socklen_t addrLen_;

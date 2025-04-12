@@ -50,7 +50,7 @@ template <typename T> Logger& Logger::operator<<(T&& text)
 
     if (target_ != Terminal)
     {
-        queue_.push(std::forward<T>(text + "\n"));
+        queue_.push(text + "\n");
     }
     return *this;
 }

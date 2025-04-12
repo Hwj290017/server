@@ -2,4 +2,4 @@
 #include <cstdint>
 
 const TimeSpec TimeSpec::inValidExpired({0, 0});
-uint64_t Timer::count = 0;
+std::atomic<uint64_t> Timer::count_ = 0;
