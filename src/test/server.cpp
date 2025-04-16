@@ -1,30 +1,18 @@
+#include "InetAddress.h"
 #include "TcpConnection.h"
 #include "TcpServer.h"
 #include "buffer.h"
+#include "log.h"
 #include "timer.h"
 #include <iostream>
-#include <memory>
-
 int main()
 {
-    InetAddress addr(LOCALHOST, PORT);
-    std::unique_ptr<TcpServer> server(new TcpServer(addr));
-    server->setMessageCb([](TcpConnection* conn, const Buffer& data, const TimeSpec& time) {
-        // 业务逻辑
-        std::cout << "Receive data from " << conn->getId() << ": ";
-        std::cout.write(data.begin(), data.size());
-        std::cout << std::endl;
-        conn->send(data.begin(), data.size());
-        conn->closeAfter(10);
+    InetAddress serverAdrr("127.0.0.1", 8888);
+    TcpServer server(serverAdrr);
+    server.setMessageCb([](TcpConnection* conn, const Buffer& buffer, const TimeSpec& time) {
+        auto str = buffer.toString();
+        std::cout << buffer.size();
+        conn->send(str);
     });
-    server->setOnConnectionCb([](TcpConnection* conn) {
-        if (conn->getState() == TcpConnection::Connected)
-            std::cout << "hello," << conn->getPeerAddr().toIpPort() << std::endl;
-        else
-        {
-            std::cout << "bye," << conn->getPeerAddr().toIpPort() << std::endl;
-        }
-    });
-    server->start();
-    return 0;
+    server.start();
 }

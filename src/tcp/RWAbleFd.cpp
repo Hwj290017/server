@@ -19,3 +19,8 @@ int RWAbleFd::write(const void* buf, size_t len) const
 {
     return ::write(fd_, buf, len);
 }
+
+int RWAbleFd::write(const std::string& buf) const
+{
+    return write(static_cast<const void*>(buf.data()), buf.length());
+}

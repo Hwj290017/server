@@ -20,6 +20,10 @@ class Buffer
 
     Buffer& operator+=(const char*);
     Buffer& operator+=(const std::string&);
+    std::string toString() const
+    {
+        return std::string(begin(), size());
+    }
     void clear()
     {
         beginIndex_ = pretendedLength;

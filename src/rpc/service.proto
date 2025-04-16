@@ -1,10 +1,19 @@
 syntax = "proto3";
 package rpc;
-message Request {
+message Request{
     string method = 1;
-    bytes data = 2;
+    bytes input = 2;
 }
-message Response {
+
+message Response{
+    string method = 1;
+    bytes output = 2;
+    bool isError = 3;
+}
+message InputEcho {
     bytes data = 1;
 }
-me
+message OutputEcho {
+    bytes data = 1;
+}
+

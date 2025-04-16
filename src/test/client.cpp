@@ -1,10 +1,23 @@
 
 #include "InetAddress.h"
 #include "Socket.h"
+#include <iostream>
+#include <unistd.h>
+
+#define BUFFERLEN 20
 int main()
 {
-    auto serverAddr = InetAddress("127.0.0.1", 8888);
+    auto serverAddr = InetAddress("127.0.0.1", 10009);
     auto serverSock = Socket::createBlocking();
+    auto buf = new char[BUFFERLEN];
     serverSock.connect(serverAddr);
-    serverSock.write("hello world", 11);
+    for (int i = 0; i < BUFFERLEN; i++)
+        buf[i] = 'h';
+
+    auto writeNum = serverSock.write(buf, BUFFERLEN);
+    std::cout << writeNum << std::endl;
+
+    auto readNum = serverSock.read(buf, BUFFERLEN);
+
+    std::cout << readNum << std::endl;
 }

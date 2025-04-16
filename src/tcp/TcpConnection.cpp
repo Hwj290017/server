@@ -20,7 +20,8 @@ TcpConnection::TcpConnection(Socket&& socket, EventLoop* loop, const InetAddress
     : socket_(std::move(socket)), loop_(loop), localAddr_(localAddr), peerAddr_(peerAddr), channel_(&socket_),
       state_(Connected), id_(id)
 {
-    channel_.setReadCb(std::bind(&TcpConnection::handleRead, this));
+    channel_.setReadCb([this]() { handleRead(); });
+    channel_.setWriteCb([this]() { handleWrite(); });
     channel_.enableRead();
     channel_.enableEt();
 }
@@ -57,14 +58,15 @@ void TcpConnection::send(const std::string& data)
 
 void TcpConnection::sendInLoop(const char* data, size_t len)
 {
-
-    Logger::logger << ("TcpConnection sendInLoop: " + std::to_string(id_));
     if (len > 0)
     {
         auto writeNum = 0;
         if (writeBuffer_.size() == 0)
         {
             writeNum = writeNonBlock(data, len);
+            Logger::logger << ("TcpConnection sendInLoop: " + std::to_string(id_) +
+                               "\nWriteNum: " + std::to_string(writeNum)) +
+                                  "\nWriteLeft: " + std::to_string(len - writeNum);
             if (writeNum < 0)
             {
                 close();
@@ -86,8 +88,10 @@ void TcpConnection::handleWrite()
 {
     if (state_ == Connected)
     {
-        Logger::logger << ("TcpConnection handleWrite: " + std::to_string(id_));
         auto writeNum = writeNonBlock(writeBuffer_.begin(), writeBuffer_.size());
+        Logger::logger << ("TcpConnection handleWrite: " + std::to_string(id_) +
+                           "\nWriteNum: " + std::to_string(writeNum));
+
         if (writeNum < 0)
         {
             close();
@@ -109,11 +113,14 @@ void TcpConnection::handleRead()
 {
     if (state_ == Connected)
     {
-        Logger::logger << ("TcpConnection handleRead: " + std::to_string(id_));
         auto readNum = readNonBlock();
-        if (readNum < 0)
+        Logger::logger << ("TcpConnection handleRead: " + std::to_string(id_) +
+                           "\nReadNum: " + std::to_string(readNum));
+
+        if (readNum <= 0)
         {
             close();
+            return;
         }
 
         else if (messageCb_)
@@ -141,7 +148,7 @@ int TcpConnection::writeNonBlock(const char* data, size_t len)
             else if (errno == EAGAIN || errno == EWOULDBLOCK)
             {
                 // 写缓冲区满
-                return 0;
+                return len - dataLeft;
             }
             else
             {
@@ -156,7 +163,8 @@ int TcpConnection::writeNonBlock(const char* data, size_t len)
         }
         dataLeft -= writeNum;
     }
-    return len - dataLeft;
+    // 全部写入
+    return len;
 }
 int TcpConnection::readNonBlock()
 {
@@ -172,6 +180,7 @@ int TcpConnection::readNonBlock()
             }
             else if (errno == EAGAIN || errno == EWOULDBLOCK)
             { // 非阻塞IO，这个条件表示数据全部读取完毕
+                Logger::logger << std::string("hello");
                 return readNumSum;
             }
             else

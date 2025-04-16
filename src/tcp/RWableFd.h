@@ -1,6 +1,7 @@
 #ifndef RWABLE_FD_H
 #define RWABLE_FD_H
 #include <cstddef>
+#include <string>
 class RWAbleFd
 {
   public:
@@ -22,6 +23,7 @@ class RWAbleFd
     }
     int read(void* buf, size_t len) const;
     int write(const void* buf, size_t len) const;
+    int write(const std::string& buf) const;
 
   protected:
     int fd_;

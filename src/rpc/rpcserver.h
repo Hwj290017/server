@@ -1,25 +1,30 @@
 #pragma once
 
-#include "TcpServer.h"
+#include "service.h"
+#include "servicehandler.h"
+#include "tcpserver.h"
 #include "timer.h"
-#include <map>
+#include <functional>
 #include <memory>
+#include <string>
+
 class InetAddress;
-class Service;
 class TcpConnection;
 class RpcServer
 {
-    using ServicePtr = std::unique_ptr<Service>;
+    using ServicePtr = std::unique_ptr<ServiceImpl>;
+    using String = std::string;
 
   public:
     RpcServer(const InetAddress& addr);
+    ~RpcServer();
     void start();
-    void registerService(const Service& service);
+    void registerService(const std::string& method, std::function<String(String)> func);
     void stop();
 
   private:
     void onConnection(TcpConnection* conn);
-    void onMessage(TcpConnection* conn, Buffer* buf, const TimeSpec& recvTime);
+    void onMessage(TcpConnection* conn, Buffer* buffer, const TimeSpec& recvTime);
     TcpServer server_;
-    std::map<std::string, ServicePtr> services_;
+    ServiceHandler handler;
 };

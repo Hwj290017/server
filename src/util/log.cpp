@@ -36,4 +36,4 @@ void Logger::writeThreadFunc()
     }
 }
 
-Logger Logger::logger(LOGPATH, Both);
+Logger Logger::logger(LOGPATH, Terminal);

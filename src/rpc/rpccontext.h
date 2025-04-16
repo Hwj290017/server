@@ -1,14 +1,20 @@
 #pragma once
-#include "buffer.h"
+
+#include "service.pb.h"
 class Buffer;
-class Service;
 class RpcContext
 {
   public:
-    void parseService(const Buffer& buffer);
-    void isRight();
+    RpcContext() : isRight_(false)
+    {
+    }
+
+    ::rpc::Request parseRequset(const Buffer& buffer);
+    bool isRight()
+    {
+        return isRight_;
+    }
 
   private:
     bool isRight_;
-    Service service_;
 };
