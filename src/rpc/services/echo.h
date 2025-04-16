@@ -1,6 +1,7 @@
 #pragma once
 
+#include "service.pb.h"
 #include <string>
 
 using String = std::string;
-String echo(String msg);
+::rpc::OutputEcho echo(::rpc::InputEcho msg);

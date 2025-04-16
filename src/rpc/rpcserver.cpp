@@ -27,7 +27,7 @@ RpcServer::RpcServer(const InetAddress& listenAddr) : server_(listenAddr, "RpcSe
         auto request = context.parseRequset(buffer);
         if (context.isRight())
         {
-            auto response = handler.call(request);
+            auto response = handler_.call(request);
             conn->send(response.SerializeAsString());
         }
     });
@@ -42,9 +42,4 @@ void RpcServer::start()
 
 void RpcServer::stop()
 {
-}
-
-void RpcServer::registerService(const String& method, std::function<String(String)> func)
-{
-    handler.registerService(method, func);
 }

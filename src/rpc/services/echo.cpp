@@ -1,6 +1,9 @@
 #include "echo.h"
+#include "service.pb.h"
 
-String echo(String msg)
+::rpc::OutputEcho echo(::rpc::InputEcho msg)
 {
-    return std::move(msg);
+    rpc::OutputEcho res;
+    res.set_data(std::move(msg).data());
+    return res;
 }

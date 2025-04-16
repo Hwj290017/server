@@ -12,8 +12,3 @@ auto ServiceHandler::call(const Request& request) -> Response
     response.set_method(std::move(method));
     return response;
 }
-
-void ServiceHandler::registerService(const String& method, std::function<String(String)> func)
-{
-    services_[method] = std::move(func);
-}
