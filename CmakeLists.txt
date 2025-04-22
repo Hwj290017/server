@@ -11,6 +11,7 @@ include_directories(./src/examples)
 include_directories(./src/rpc)
 include_directories(./src/rpc/services)
 include_directories(./src/util)
+include_directories(./include)
 
 aux_source_directory(./src/tcp src_tcp)
 aux_source_directory(./src/http src_http)
