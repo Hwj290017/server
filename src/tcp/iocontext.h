@@ -33,7 +33,6 @@ class EventLoop
     EventLoop();
     ~EventLoop();
 
-    // 事件驱动
     void loop();
 
     // 更新事件状态,包括添加修改删除
@@ -75,6 +74,7 @@ class EventLoop
   private:
     enum LoopState
     {
+        kStopped,
         HandlingEvents,
         CallingTasks,
         Waiting

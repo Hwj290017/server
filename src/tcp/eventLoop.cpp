@@ -30,7 +30,7 @@ EventLoop::~EventLoop() = default;
 
 void EventLoop::loop()
 {
-    while (true)
+    while (loopState_ != kStopped)
     {
         std::queue<std::function<void()>> tempTasks;
         // 更新时间队列
