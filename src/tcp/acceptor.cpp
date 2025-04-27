@@ -1,34 +1,37 @@
 #include "acceptor.h"
-#include "eventLoop.h"
+#include "iocontext.h"
+#include "iocontextpool.h"
 #include "log.h"
-#include <iostream>
-#include <string>
-
-Acceptor::Acceptor(EventLoop* loop, const InetAddress& addr)
-    : loop_(loop), socket_(Socket::createServerSocket(addr)), channel_(&socket_), addr_(addr)
+#include "socket.h"
+namespace tcp
 {
-    socket_.listen();
-    channel_.setReadCb([this]() { handleRead(); });
-    channel_.enableRead();
-    channel_.start();
-    loop_->updateChannel(&channel_);
+Acceptor::Acceptor(IoContext* ioContext, const InetAddress& addr)
+    : IoObject(Socket::createAcceptorSocket(addr), ioContext), addr_(addr)
+{
 }
 
 Acceptor::~Acceptor()
 {
-    channel_.close();
-    loop_->updateChannel(&channel_);
+}
+
+void Acceptor::start()
+{
+    ioContext_->runInThread([this]() { ioContext_->enableRead(this); });
 }
 
 // 接受客户端连接
-void Acceptor::handleRead() const
+void Acceptor::onRead()
 {
     InetAddress clientAddr;
-    Socket clientSocket = socket_.accept(clientAddr);
-
-    Logger::logger << ("Accept a connection: " + std::to_string(clientSocket.fd()));
+    auto clientSocket = Socket::accept(fd_, &clientAddr);
+    IoContextPool::instance()->addConnection(clientSocket, clientAddr, this);
+    Logger::logger << ("Accept a connection: " + std::to_string(clientSocket));
     Logger::logger << clientAddr.toIpPort();
-    // 交给server建立连接
-    if (newConnectionCb_)
-        newConnectionCb_(std::move(clientSocket), clientAddr);
 }
+
+void Acceptor::stop(double delay)
+{
+    ioContext_->remove(this);
+}
+
+} // namespace tcp

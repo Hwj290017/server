@@ -1,13 +1,15 @@
-#ifndef INETADDRESS_H
-#define INETADDRESS_H
+#pragma once
 
 #include <cstdint>
 #include <netinet/in.h>
 #include <string>
+namespace tcp
+{
 class InetAddress
 {
   public:
     InetAddress(const char* ip, uint16_t port);
+    InetAddress(const InetAddress& other) = default;
     InetAddress() : addrLen_(sizeof(addr_))
     {
     }
@@ -18,4 +20,4 @@ class InetAddress
     socklen_t addrLen_;
 };
 
-#endif // INETADDRESS_H
+} // namespace tcp

@@ -2,7 +2,7 @@
 
 #include <functional>
 #include <memory>
-#include <vector>
+
 namespace tcp
 {
 class ConnectionId;
@@ -11,7 +11,7 @@ class AcceptorId
 {
   public:
     using BeforeAcceptTask = std::function<void(AcceptorId)>;
-    using AfterAcceptTask = std::function<void(AcceptorId, ConnectionId)>;
+    using AfterAcceptTask = std::function<void(const AcceptorId&, const ConnectionId&, IoContextId*)>;
     using AcceptorTask = std::function<void(AcceptorId)>;
 
     // 在接受连接前执行任务

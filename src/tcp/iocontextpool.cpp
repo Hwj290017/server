@@ -1,43 +1,37 @@
+#include "iocontextpool.h"
 #include "iocontext.h"
-#include "eventLoop.h"
-#include <functional>
+#include <cstddef>
+#include <memory>
+
 namespace tcp
 {
-IoContext::IoContext() : loop_(nullptr)
+IoContextPool::IoContextPool(std::size_t ioContextNum) : ioContextNum_(ioContextNum)
 {
 }
 
 // 析构函数，用于销毁IoContext对象
-IoContext::~IoContext()
+IoContextPool::~IoContextPool()
 {
-    // 如果线程是可连接的，则连接线程
-    if (thread_.joinable())
-        thread_.join();
 }
 
-// 创建线程并返回loop
-EventLoop* IoContext::start()
+void IoContextPool::start()
 {
-    thread_ = std::thread(std::bind(&IoContext::threadFunc, this));
+    for (auto i = 0; i < ioContextNum_; ++i)
     {
-        std::unique_lock<std::mutex> lock(mutex_);
-        while (!loop_)
-            cv_.wait(lock);
+        ioContexts_.emplace_back(std::make_unique<IoContext>());
+        ioContexts_.back()->start();
     }
-    return loop_;
 }
-// 线程函数
-void IoContext::threadFunc()
+
+IoContext* IoContextPool::getIoContext()
 {
-    {
-        std::unique_lock<std::mutex> lock(mutex_);
-        loop_ = &loop;
-        cv_.notify_one();
-    }
-    loop.loop();
-    {
-        std::unique_lock<std::mutex> lock(mutex_);
-        loop_ = nullptr;
-    }
+    currentIndex_ = (currentIndex_ + 1) % ioContextNum_;
+    return ioContexts_[currentIndex_].get();
+}
+
+IoContextPool* IoContextPool::instance()
+{
+    static IoContextPool pool;
+    return &pool;
 }
 } // namespace tcp

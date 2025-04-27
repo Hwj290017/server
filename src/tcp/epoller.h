@@ -1,25 +1,24 @@
-#include "channel.h"
+
 #include "poller.h"
+#include <cstddef>
 #include <sys/epoll.h>
 #include <unordered_map>
 #include <vector>
-
-#define MAX_EVENTS 1024
+namespace tcp
+{
 class Epoller : public Poller
 {
   public:
     Epoller();
     ~Epoller() override;
-    // 获取活跃的Channel
-    std::vector<Channel*> poll(int timeout = -1) override;
-    // 更新Channel
-    void updateChannel(Channel* channel) override;
-    // 判断Channel是否注册
-    bool hasChannel(const Channel* channel) override;
+    auto poll(int timeout = -1) -> std::vector<ActiveObj> override;
+    void update(int fd, void* data, Type type) override;
 
   private:
+    epoll_event getEvent(Type type);
+    static constexpr std::size_t kEventSize = 1024;
     int epfd_;
-    epoll_event events_[MAX_EVENTS];
-    std::unordered_map<int, Channel*> channels_;
-    static int createEpollFd_();
+    epoll_event events_[kEventSize];
+    std::unordered_map<int, Type> attachedFds_;
 };
+} // namespace tcp

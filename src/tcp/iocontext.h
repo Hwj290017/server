@@ -1,97 +1,101 @@
 
-#ifndef EVENTLOOP_H
-#define EVENTLOOP_H
+#pragma once
 
-#include "RWAbleFd.h"
-#include "timer.h"
-#include "timerqueue.h"
+#include "acceptor.h"
+#include "inetAddress.h"
+#include "ioobject.h"
+#include <cassert>
 #include <functional>
 #include <memory>
 #include <mutex>
-#include <queue>
+#include <sys/eventfd.h>
 #include <thread>
-
+#include <unordered_map>
+#include <vector>
+namespace tcp
+{
 #define MAX_EVENTS 1024
 class Poller;
 
-class EventFd : public RWAbleFd
-{
-  public:
-    static EventFd createEventFd();
-
-  private:
-    EventFd(int fd) : RWAbleFd(fd)
-    {
-    }
-};
-
-class EventLoop
+class IoContext
 {
     using Task = std::function<void()>;
 
   public:
-    EventLoop();
-    ~EventLoop();
-
-    void loop();
-
-    // 更新事件状态,包括添加修改删除
-    void updateChannel(Channel*) const;
-    // 是否有事件
-    void hasChannel(const Channel*) const;
-    template <typename T> void runInLoop(T&& task)
+    IoContext();
+    ~IoContext();
+    enum class Type
     {
-        if (isLoopThread())
-            task();
-        else
-            queueInLoop(std::forward<T>(task));
+        kNone,
+        kReadable,
+        kWriteable,
+        kBoth,
+        kPaused,
+        kStoped
+    };
+    void start()
+    {
+        thread_ = std::thread([this]() { threadFunc(); });
     }
 
-    template <typename T> void queueInLoop(T&& task)
+    // void stop()
+    // {
+    //     runInThread([this]() { stopInThread(); });
+    // }
+    void addAcceptor(InetAddress listenAddr);
+    void addConnection(int clientSocket, InetAddress clientAddr, Acceptor* acceptor);
+    void updateIoObject(IoObject* object, Type type);
+    void remove(IoObject* object);
+    void enableRead(IoObject* object);
+    void disableRead(IoObject* object);
+    void enableWrite(IoObject* object);
+    void disableWrite(IoObject* object);
+
+    void addTask(Task&& task);
+    template <typename T> void runInThread(T&& task, double delay = 0.0, double interval = 0.0)
+    {
+        if (isOwnThread())
+            task();
+        else
+            queueInThread(std::forward<T>(task));
+    }
+
+    template <typename T> void queueInThread(T&& task)
     {
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            tasks_.push(task);
+            tasks_.emplace_back(std::forward<T>(task));
         }
         // 无论是不是当前线程，只要不是在处理事件都唤醒
-        if (loopState_ != HandlingEvents)
-            wakeup();
+        if (state_ != HandlingEvents)
+            waker.wakeup();
     }
 
-    bool isLoopThread() const;
-    void wakeup();
-    // time是时间点，timespec_get是获取当前时间点
-    TimerId runAt(const Task& task, const TimeSpec& when);
-    // delay秒后启动一次task
-    TimerId runAfter(const Task& task, double delay);
-    // 每隔interval秒启动一次task
-    TimerId runEvery(const Task& task, double interval);
-    // 更新定时器
-    void updateTimer(const TimerId& timerId);
-    // 移除定时器
-    void removeTimer(TimerId& timerId);
+    bool isOwnThread() const;
 
   private:
-    enum LoopState
+    enum State
     {
         kStopped,
         HandlingEvents,
         CallingTasks,
         Waiting
     };
-
-    EventFd wakeupFd_;
-    Channel wakeupChannel_;
+    class Waker : public IoObject
+    {
+      public:
+        Waker(IoContext* context);
+        void onRead() override;
+        void wakeup();
+    };
+    void threadFunc();
+    void stopInThread();
+    std::unordered_map<std::size_t, std::unique_ptr<IoObject>> ioObjects_;
+    std::thread thread_;
     std::unique_ptr<Poller> poller_;
-    TimerQueue timerQueue_;
-    // 任务队列，每次loop中执行
-    // 统一运行，和vector一样，后续更换
-    std::queue<Task> tasks_;
-    std::thread::id threadId_;
+    std::vector<Task> tasks_;
+    Waker waker;
     std::mutex mutex_;
-    LoopState loopState_;
-    // 唤醒时的回调函数
-    void handleRead();
+    State state_;
 };
-
-#endif
+} // namespace tcp

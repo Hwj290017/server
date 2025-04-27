@@ -1,17 +1,24 @@
-#ifndef POLLER_H
-#define POLLER_H
+#pragma once
+
+#include <utility>
 #include <vector>
-class Channel;
+namespace tcp
+{
 class Poller
 {
   public:
-    // 获取活跃的Channel
-    virtual std::vector<Channel*> poll(int timeout = -1) = 0;
-    // 更新Channel
-    virtual void updateChannel(Channel* channel) = 0;
-    // 判断Channel是否注册
-    virtual bool hasChannel(const Channel* channel) = 0;
+    enum class Type
+    {
+        kReadable,
+        kWriteable,
+        kBoth,
+        kStopped,
+        kNone
+    };
+
+    using ActiveObj = std::pair<void*, Type>;
+    virtual std::vector<ActiveObj> poll(int timeout = -1) = 0;
+    virtual void update(int fd, void* data, Type type) = 0;
     virtual ~Poller() = default;
 };
-
-#endif // POLLER_H
+} // namespace tcp

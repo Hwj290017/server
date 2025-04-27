@@ -1,35 +1,29 @@
-#ifndef ACCEPTOR_H
-#define ACCEPTOR_H
-
-#include "InetAddress.h"
-#include "Socket.h"
-#include "channel.h"
-#include <functional>
-
-class EventLoop;
-class Acceptor
+#pragma once
+#include "inetAddress.h"
+#include "ioobject.h"
+#include "tcp/acceptorid.h"
+#include <cstddef>
+#include <memory>
+#include <unordered_map>
+namespace tcp
 {
-    using NewConnectionCb = std::function<void(Socket&&, const InetAddress&)>;
+class Connection;
 
+class Acceptor : public IoObject
+{
   public:
-    Acceptor(EventLoop* loop, const InetAddress& addr);
+    using AfterAcceptTask = std::function<void(Acceptor*, Connection*)>;
+    Acceptor(IoContext* context, const InetAddress& addr);
     ~Acceptor();
-
-    // set a callback to be called when a new connection is accepted
-    void handleRead() const;
-
-    template <typename T> void setNewConnectionCb(T&& cb)
-    {
-        newConnectionCb_ = std::forward<T>(cb);
-    }
+    void start();
+    void afterAccept(AfterAcceptTask task);
+    void stop(double delay = 0.0);
+    void onRead() override;
 
   private:
-    EventLoop* loop_;
-    Socket socket_;
-    Channel channel_;
+    IoContext* ioContext_;
     InetAddress addr_;
-
-    NewConnectionCb newConnectionCb_;
+    AfterAcceptTask afterAcceptTask_;
 };
 
-#endif
+} // namespace tcp

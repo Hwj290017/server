@@ -1,13 +1,13 @@
 #include "epoller.h"
-#include "EventLoop.h"
-#include "channel.h"
-#include "util.h"
 #include <cassert>
 #include <sys/epoll.h>
 #include <unistd.h>
 
-Epoller::Epoller() : epfd_(createEpollFd_())
+namespace tcp
 {
+Epoller::Epoller() : epfd_(epoll_create1(EPOLL_CLOEXEC))
+{
+    assert(epfd_ >= 0);
 }
 
 Epoller::~Epoller()
@@ -16,67 +16,59 @@ Epoller::~Epoller()
     close(epfd_);
 }
 
-std::vector<Channel*> Epoller::poll(int timeout)
+auto Epoller::poll(int timeout) -> std::vector<ActiveObj>
 {
-    auto eventsNum = epoll_wait(epfd_, events_, MAX_EVENTS, timeout);
-    errif(eventsNum < 0, "epoll_wait error");
-    std::vector<Channel*> activeChannels(eventsNum);
+    auto eventsNum = epoll_wait(epfd_, events_, kEventSize, timeout);
+    assert(eventsNum >= 0);
+    std::vector<ActiveObj> activeObjs(eventsNum);
 
     for (auto i = 0; i < eventsNum; ++i)
     {
-        auto channel = static_cast<Channel*>(events_[i].data.ptr);
-        channel->setRevent(events_[i].events);
-        activeChannels[i] = channel;
-    }
-    return activeChannels;
-}
-
-void Epoller::updateChannel(Channel* channel)
-{
-    if (channel)
-    {
-        auto fd = channel->fd();
-        auto event = channel->getEvent();
-        epoll_event ev;
-        ev.events = event;
-        ev.data.ptr = channel;
-        auto it = channels_.find(fd);
-        if (channel->isQuit())
+        auto obj = events_[i].data.ptr;
+        auto event = events_[i].events;
+        auto type = Type::kNone;
+        if (event & EPOLLIN && event & EPOLLOUT)
         {
-            // 删除
-            assert(it != channels_.end());
-            epoll_ctl(epfd_, EPOLL_CTL_DEL, fd, nullptr);
+            type = Type::kBoth;
+        }
+        else if (event & EPOLLIN)
+        {
+            type = Type::kReadable;
         }
         else
-        {
-            if (it == channels_.end())
-            {
-                // 添加
-                channels_[fd] = channel;
-                epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &ev);
-            }
-            else
-            {
-                // 修改
-                epoll_ctl(epfd_, EPOLL_CTL_MOD, fd, &ev);
-            }
-        }
+            type = Type::kWriteable;
+        activeObjs[i] = {obj, type};
     }
+    return activeObjs;
 }
 
-bool Epoller::hasChannel(const Channel* channel)
+void Epoller::update(int fd, void* data, Type type)
 {
-    if (channel)
+    assert(fd >= 0 && data != nullptr && type != Type::kNone);
+    auto it = attachedFds_.find(fd);
+    if (type != Type::kStopped)
     {
-        auto fd = channel->fd();
-        return channels_.find(fd) != channels_.end();
+        epoll_event ev;
+        ev.events = 0;
+        ev.data.ptr = data;
+        if (type == Type::kReadable || type == Type::kBoth)
+        {
+            ev.events |= EPOLLIN;
+        }
+        if (type == Type::kWriteable || type == Type::kBoth)
+        {
+            ev.events |= EPOLLOUT;
+        }
+        if (it == attachedFds_.end())
+        {
+            epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &ev);
+        }
+        else
+            epoll_ctl(epfd_, EPOLL_CTL_MOD, fd, &ev);
     }
-    return false;
+    else if (it != attachedFds_.end())
+    {
+        epoll_ctl(epfd_, EPOLL_CTL_DEL, fd, nullptr);
+    }
 }
-
-int Epoller::createEpollFd_()
-{
-    auto epfd = epoll_create1(EPOLL_CLOEXEC);
-    errif(epfd < 0, "epoll_create1 error");
-    return epfd;
-}
+} // namespace tcp
