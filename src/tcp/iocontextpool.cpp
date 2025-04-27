@@ -1,5 +1,6 @@
 #include "iocontextpool.h"
 #include "iocontext.h"
+#include "threadpool.h"
 #include <cstddef>
 #include <memory>
 
@@ -19,7 +20,7 @@ void IoContextPool::start()
     for (auto i = 0; i < ioContextNum_; ++i)
     {
         ioContexts_.emplace_back(std::make_unique<IoContext>());
-        ioContexts_.back()->start();
+        ThreadPool::Instance().addTask([ioContext = ioContexts_.back().get()] { ioContext->start(); });
     }
 }
 
@@ -29,9 +30,9 @@ IoContext* IoContextPool::getIoContext()
     return ioContexts_[currentIndex_].get();
 }
 
-IoContextPool* IoContextPool::instance()
+IoContextPool& IoContextPool::instance()
 {
     static IoContextPool pool;
-    return &pool;
+    return pool;
 }
 } // namespace tcp

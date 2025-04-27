@@ -5,6 +5,7 @@
 #include "inetAddress.h"
 #include "ioobject.h"
 #include <cassert>
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -24,19 +25,7 @@ class IoContext
   public:
     IoContext();
     ~IoContext();
-    enum class Type
-    {
-        kNone,
-        kReadable,
-        kWriteable,
-        kBoth,
-        kPaused,
-        kStoped
-    };
-    void start()
-    {
-        thread_ = std::thread([this]() { threadFunc(); });
-    }
+    void start();
 
     // void stop()
     // {
@@ -44,12 +33,11 @@ class IoContext
     // }
     void addAcceptor(InetAddress listenAddr);
     void addConnection(int clientSocket, InetAddress clientAddr, Acceptor* acceptor);
-    void updateIoObject(IoObject* object, Type type);
-    void remove(IoObject* object);
-    void enableRead(IoObject* object);
-    void disableRead(IoObject* object);
-    void enableWrite(IoObject* object);
-    void disableWrite(IoObject* object);
+    void remove(size_t id);
+    void enableRead(size_t id);
+    void disableRead(size_t id);
+    void enableWrite(size_t id);
+    void disableWrite(size_t id);
 
     void addTask(Task&& task);
     template <typename T> void runInThread(T&& task, double delay = 0.0, double interval = 0.0)
@@ -71,7 +59,7 @@ class IoContext
             waker.wakeup();
     }
 
-    bool isOwnThread() const;
+    bool inOwnThread() const;
 
   private:
     enum State
@@ -91,11 +79,11 @@ class IoContext
     void threadFunc();
     void stopInThread();
     std::unordered_map<std::size_t, std::unique_ptr<IoObject>> ioObjects_;
-    std::thread thread_;
     std::unique_ptr<Poller> poller_;
     std::vector<Task> tasks_;
     Waker waker;
     std::mutex mutex_;
     State state_;
+    std::thread::id threadId_;
 };
 } // namespace tcp

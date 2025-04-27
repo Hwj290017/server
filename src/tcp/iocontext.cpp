@@ -15,7 +15,7 @@ namespace tcp
 {
 IoContext::IoContext() : poller_(new Epoller()), waker(this), tasks_(), state_(kStopped)
 {
-    this->enableRead(&waker);
+    enableRead(&waker);
 }
 
 IoContext::~IoContext() = default;
@@ -23,9 +23,9 @@ void IoContext::addAcceptor(InetAddress listenAddr)
 {
     runInThread([this, listenAddr]() {
         auto acceptor = std::make_unique<Acceptor>(this, listenAddr);
-        ioObjects_[acceptor->id()] = std::move(acceptor);
-        // 默认自动可读
-        updateIoObject(acceptor.get(), Type::kReadable);
+        auto id = acceptor->id();
+        this->ioObjects_[id] = std::move(acceptor);
+        enableRead(id);
     });
 }
 
@@ -49,8 +49,9 @@ void IoContext::updateIoObject(IoObject* object, Type type)
         re
     }
 }
-void IoContext::threadFunc()
+void IoContext::start()
 {
+    threadId_ = std::this_thread::get_id();
     // 循环执行
     while (state_ != kStopped)
     {
@@ -83,9 +84,9 @@ void IoContext::threadFunc()
     }
 }
 
-bool IoContext::isOwnThread() const
+bool IoContext::inOwnThread() const
 {
-    return thread_.get_id() == std::this_thread::get_id();
+    return threadId_ == std::this_thread::get_id();
 }
 
 void IoContext::remove(IoObject* object)
