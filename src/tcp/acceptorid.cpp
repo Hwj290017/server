@@ -1,33 +1,34 @@
-#include "tcp/acceptorId.h"
-#include "iocontextpool.h"
+#include "tcp/acceptorid.h"
+#include "acceptor.h"
+#include "iocontext.h"
+
 #include "sharedobjectpool.h"
-#include "tcp/iocontextid.h"
 #include <cstddef>
-#include <memory>
 
 namespace tcp
 {
-struct AcceptorId::Impl
-{
-    Impl(const InetAddress& listenAddr, std::size_t ioContextId)
-        : id_(SharedObjectPool::instance().getAcceptor(listenAddr, ioContextId)), ioContextId_(ioContextId)
-    {
-    }
-    std::size_t id_;
-    std::size_t ioContextId_;
-};
-AcceptorId::AcceptorId(const InetAddress& listenAddr, IoContextId ioContextId)
-    : impl_(std::make_unique<Impl>(listenAddr, ioContextId.id()))
+
+AcceptorId::AcceptorId(std::size_t id) : SharedObjectId(id)
 {
 }
 
 void AcceptorId::start(double delay)
 {
-    IoContextPool::instance().getIoContext(impl_->ioContextId_)->start(impl_->id_, delay);
+    auto ioContext = SharedObjectPool::instance().getIoContext(id_);
+    ioContext->runTask([id = id_]() {
+        auto obj = SharedObjectPool::instance().getObject(id);
+        if (obj)
+            static_cast<Acceptor*>(obj)->start();
+    });
 }
 
 void AcceptorId::stop(double delay)
 {
-    IoContextPool::instance().getIoContext(impl_->ioContextId_)->stop(impl_->id_, delay);
+    auto ioContext = SharedObjectPool::instance().getIoContext(id_);
+    ioContext->runTask([id = id_]() {
+        auto obj = SharedObjectPool::instance().getObject(id);
+        if (obj)
+            static_cast<Acceptor*>(obj)->stop();
+    });
 }
 } // namespace tcp

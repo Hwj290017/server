@@ -1,6 +1,6 @@
 #pragma once
 
-#include "tcp/InetAddress.h"
+#include "tcp/inetaddress.h"
 #include <cassert>
 #include <cstddef>
 #include <fcntl.h>

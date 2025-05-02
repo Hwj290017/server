@@ -1,6 +1,6 @@
 
 #pragma once
-
+#include "poller.h"
 #include "sharedobject.h"
 #include <cassert>
 #include <cstddef>
@@ -13,7 +13,6 @@
 #include <vector>
 namespace tcp
 {
-class Poller;
 class SharedObject;
 class IoContext
 {
@@ -22,15 +21,10 @@ class IoContext
   public:
     IoContext();
     ~IoContext();
-
     // 以下接口由调用方保证保证在同一个线程中调用
-    void start(std::size_t id, double delay = 0.0);
-    void send(std::size_t connId, const void* data, std::size_t len);
-    void setAfterReadTask(std::size_t connId, const Task& task);
-    void setAfterWriteTask(std::size_t connId, const Task& task);
-    void setConnectTask(std::size_t connId, const Task& task);
-    void setDisconnectTask(std::size_t connId, const Task& task);
-    void stop(std::size_t id, double delay = 0.0);
+    void updateObject(SharedObject* object, Poller::Type type);
+    // 以下接口线程安全
+    std::size_t id();
     template <typename T> void runTask(T&& task, double delay = 0.0, double interval = 0.0)
     {
         if (inOwnThread())
