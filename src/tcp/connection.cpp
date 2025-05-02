@@ -3,6 +3,7 @@
 #include "object.h"
 #include "poller.h"
 #include "sharedobject.h"
+#include "sharedobjectpool.h"
 #include "tcp/connectionid.h"
 #include "util/log.h"
 #include <cassert>
@@ -14,9 +15,8 @@
 #include <unistd.h>
 namespace tcp
 {
-Connection::Connection(int clientSocket, IoContext* ioContext, std::size_t id, std::size_t parent,
-                       const InetAddress& clientAddr)
-    : SharedObject(clientSocket, ioContext, id, parent), addr_(clientAddr)
+Connection::Connection(int clientSocket, IoContext* ioContext, std::size_t id, const InetAddress& clientAddr)
+    : SharedObject(clientSocket, ioContext, id), addr_(clientAddr), state_(kConnected)
 {
 }
 
@@ -27,66 +27,55 @@ Connection::~Connection()
 void Connection::start()
 {
     if (connectTask_)
-        connectTask_(ConnectionId(id_, parent_));
+        connectTask_(ConnectionId(id_));
     ioContext_->updateObject(this, Poller::Type::kReadable);
 }
 
 void Connection::stop()
 {
-    if (disconnectTask_)
-        disconnectTask_(ConnectionId(id_, parent_));
-    ioContext_->updateObject(this, Poller::Type::kNone);
+    if (state_ == kConnected)
+    {
+        state_ = kDisconnected;
+        if (disconnectTask_)
+            disconnectTask_(ConnectionId(id_));
+        ioContext_->updateObject(this, Poller::Type::kNone);
+        SharedObjectPool::instance().releaseObject(id_);
+    }
 }
 
 void Connection::send(std::string&& data)
 {
+    if (data.length() > 0)
+    {
+        if (writeBuffer_.writeSocket(fd_, data))
+        {
+            if (writeBuffer_.size() > 0)
+            {
+                ioContext_->updateObject(this, Poller::Type::kBoth);
+            }
+        }
+        else
+        {
+            stop();
+        }
+    }
 }
-// void Connection::sendInLoop(const char* data, size_t len)
-// {
-//     if (len > 0)
-//     {
-//         auto writeNum = 0;
-//         if (writeBuffer_.size() == 0)
-//         {
-//             writeNum = writeNonBlock(data, len);
-//             Logger::logger << ("TcpConnection sendInLoop: " + std::to_string(id_) +
-//                                "\nWriteNum: " + std::to_string(writeNum)) +
-//                                   "\nWriteLeft: " + std::to_string(len - writeNum);
-//             if (writeNum < 0)
-//             {
-//                 close();
-//                 return;
-//             }
-//         }
-
-//         if (writeNum < len)
-//         {
-//             // 未写完的数据放入写缓冲区
-//             writeBuffer_.append(data + writeNum, len - writeNum);
-//             channel_.enableWrite();
-//             loop_->updateChannel(&channel_);
-//         }
-//     }
-// }
 
 void Connection::onWrite()
 {
-    Logger::logger << ("TcpConnection handleWrite: " + id() + "\nWriteNum: " + std::to_string(writeNum));
+    // Logger::logger << ("TcpConnection handleWrite: " + id() + "\nWriteNum: " + std::to_string(writeNum));
 
-    if (writeNum < 0)
+    if (writeBuffer_.writeSocket(fd_, std::string()))
     {
-        close();
-        return;
-    }
-
-    if (writeBuffer_.size() > 0)
-    {
-        // 未写完
-        channel_.enableWrite();
-        loop_->updateChannel(&channel_);
+        if (writeBuffer_.size() > 0)
+        {
+            ioContext_->updateObject(this, Poller::Type::kBoth);
+        }
     }
     else
-        writeBuffer_.clear();
+    {
+        stop();
+    }
 }
 
 void Connection::onRead()
@@ -94,89 +83,16 @@ void Connection::onRead()
 
     Logger::logger << ("TcpConnection handleRead: " + std::to_string(id_));
 
-    auto success = readBuffer_.readSocket(fd_);
-    if (success)
+    if (readBuffer_.readSocket(fd_))
     {
         if (afterReadTask_)
-            afterReadTask_(ConnectionId(id_, parent_), readBuffer_.begin(), readBuffer_.size());
+            afterReadTask_(ConnectionId(id_), readBuffer_.begin(), readBuffer_.size());
     }
     else
     {
         stop();
     }
 }
-}
-
-// int TcpConnection::writeNonBlock(const char* data, size_t len)
-// {
-//     // 执行函数时，处于Connected
-//     auto dataLeft = len;
-//     while (dataLeft > 0)
-//     {
-//         auto writeNum = socket_.write(data + len - dataLeft, dataLeft);
-//         if (writeNum < 0)
-//         {
-//             if (errno == EINTR)
-//             // continue writing
-//             {
-//                 continue;
-//             }
-//             else if (errno == EAGAIN || errno == EWOULDBLOCK)
-//             {
-//                 // 写缓冲区满
-//                 return len - dataLeft;
-//             }
-//             else
-//             {
-//                 // Other error on client
-//                 return -1;
-//             }
-//         }
-//         else if (writeNum == 0)
-//         {
-//             // Other error on client
-//             return -1;
-//         }
-//         dataLeft -= writeNum;
-//     }
-//     // 全部写入
-//     return len;
-// }
-// int TcpConnection::readNonBlock()
-// {
-//     auto readNumSum = 0;
-//     while (true)
-//     {
-//         int readNum = readBuffer_.readSocket(socket_);
-//         if (readNum <= 0)
-//         { // 客户端正常中断、继续读取
-//             if (errno == EINTR)
-//             {
-//                 continue;
-//             }
-//             else if (errno == EAGAIN || errno == EWOULDBLOCK)
-//             { // 非阻塞IO，这个条件表示数据全部读取完毕
-//                 Logger::logger << std::string("hello");
-//                 return readNumSum;
-//             }
-//             else
-//             {
-//                 // client断开连接
-//                 return -1;
-//             }
-//         }
-//         else
-//         {
-//             readNumSum += readNum;
-//         }
-//     }
-// }
-// 暂时没处理延时关闭
-
-// void TcpConnection::closeAfter(double delay)
-// {
-//     loop_->runAfter(std::bind(&TcpConnection::close, this), delay);
-// }
 
 // void TcpConnection::closeInLoop()
 // {

@@ -21,9 +21,14 @@ class Connection : public SharedObject
     using DisconnectTask = std::function<void(const ConnectionId&)>;
     using AfterReadTask = std::function<void(const ConnectionId&, const void*, std::size_t)>;
     using StopTask = std::function<void()>;
+
+    enum State
+    {
+        kConnected,
+        kDisconnected,
+    };
     // loop为nullptr表示客户端建立的
-    Connection(int clientSocket, IoContext* ioContext, std::size_t id, std::size_t parent,
-               const InetAddress& clientAddr);
+    Connection(int clientSocket, IoContext* ioContext, std::size_t id, const InetAddress& clientAddr);
     ~Connection();
     void start() override;
     void stop() override;
@@ -35,7 +40,6 @@ class Connection : public SharedObject
     void setConnectTask(ConnectTask&& task);
     void setDisconnectTask(DisconnectTask&& task);
     void setAfterReadTask(AfterReadTask&& task);
-    void setStopTask(StopTask&& task);
 
   private:
     InetAddress addr_;
@@ -51,6 +55,7 @@ class Connection : public SharedObject
 
     // 读事件处理,客户端发送空数据不会触发读事件
     std::any context_;
+    State state_;
     // 非阻塞写
     int writeNonBlock(const char* data, size_t len);
     // 非阻塞读到缓冲区

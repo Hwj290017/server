@@ -56,6 +56,7 @@ class Buffer
     }
     // 成功返回true，失败返回false
     bool readSocket(int fd);
+    bool writeSocket(int fd, const std::string& data);
 
   private:
     // 确保有足够的后写空间

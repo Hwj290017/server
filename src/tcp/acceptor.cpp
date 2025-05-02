@@ -1,10 +1,10 @@
 #include "acceptor.h"
 #include "iocontext.h"
-#include "log.h"
 #include "object.h"
 #include "sharedobject.h"
 #include "sharedobjectpool.h"
 #include "socket.h"
+#include "util/log.h"
 #include <cstddef>
 namespace tcp
 {
@@ -22,8 +22,7 @@ void Acceptor::onRead()
 {
     InetAddress clientAddr;
     auto clientSocket = socket::accept(fd_, &clientAddr);
-    if (newConnectionCallback_)
-        newConnectionCallback_(clientSocket, clientAddr);
+    SharedObjectPool::instance().getConnection(clientSocket, clientAddr, id_);
     Logger::logger << ("Accept a connection: " + std::to_string(clientSocket));
     Logger::logger << clientAddr.toIpPort();
 }
