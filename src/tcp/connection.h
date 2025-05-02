@@ -1,7 +1,7 @@
 #pragma once
 #include "acceptor.h"
 #include "buffer.h"
-#include "ioobject.h"
+#include "sharedobject.h"
 #include <any>
 #include <atomic>
 #include <cstddef>
@@ -10,19 +10,21 @@ namespace tcp
 {
 class IoContext;
 class InetAddress;
-class Connection : public IoObject
+
+class ConnectionId;
+
+class AcceptorId;
+
+class Connection : public SharedObject
 {
   public:
-    using ConnectTask = std::function<void(Connection*)>;
-    using DisconnectTask = std::function<void(Connection*)>;
-    using AfterReadTask = std::function<void(Connection*, const void*, std::size_t)>;
-    enum State
-    {
-        Connected,
-        DisConnected
-    };
+    using ConnectTask = std::function<void(const ConnectionId&)>;
+    using DisconnectTask = std::function<void(const ConnectionId&)>;
+    using AfterReadTask = std::function<void(const ConnectionId&, const void*, std::size_t)>;
+    using StopTask = std::function<void()>;
     // loop为nullptr表示客户端建立的
-    Connection(int clientSocket, const InetAddress& clientAddr, IoContext* ioContext, Acceptor* acceptor);
+    Connection(int clientSocket, IoContext* ioContext, std::size_t id, const AcceptorId& acceptorId,
+               const InetAddress& clientAddr);
     ~Connection();
     void start();
     void stop();
@@ -31,17 +33,13 @@ class Connection : public IoObject
     void send(std::string&& data);
     void onRead() override;
     void onWrite() override;
-    std::size_t id() const;
     void setConnectTask(ConnectTask&& task);
     void setDisconnectTask(DisconnectTask&& task);
     void setAfterReadTask(AfterReadTask&& task);
-    void close(double delay = 0.0);
+    void setStopTask(StopTask&& task);
 
   private:
     InetAddress addr_;
-    const Acceptor* acceptor_;
-    int id_;
-    std::atomic<State> state_;
     Buffer readBuffer_;
     Buffer writeBuffer_;
 
@@ -58,9 +56,5 @@ class Connection : public IoObject
     int writeNonBlock(const char* data, size_t len);
     // 非阻塞读到缓冲区
     int readNonBlock();
-
-    void sendInThread(const char* data, size_t len);
-    void closeInThread();
-    void startInThread();
 };
 } // namespace tcp

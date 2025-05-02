@@ -1,12 +1,14 @@
 #include "acceptor.h"
 #include "iocontext.h"
-#include "iocontextpool.h"
 #include "log.h"
+#include "object.h"
+#include "sharedobject.h"
 #include "socket.h"
+#include <cstddef>
 namespace tcp
 {
-Acceptor::Acceptor(IoContext* ioContext, const InetAddress& addr)
-    : IoObject(Socket::createAcceptorSocket(addr), ioContext), addr_(addr)
+Acceptor::Acceptor(std::size_t id, IoContext* ioContext, std::size_t parent, const InetAddress& addr)
+    : SharedObject(socket::createAcceptorSocket(addr), ioContext, id, parent), addr_(addr)
 {
 }
 
@@ -16,22 +18,21 @@ Acceptor::~Acceptor()
 
 void Acceptor::start()
 {
-    ioContext_->runInThread([this]() { ioContext_->enableRead(this); });
+    poller_->update(fd_, this, Poller::);
 }
 
 // 接受客户端连接
 void Acceptor::onRead()
 {
     InetAddress clientAddr;
-    auto clientSocket = Socket::accept(fd_, &clientAddr);
-    IoContextPool::instance()->addConnection(clientSocket, clientAddr, this);
+    auto clientSocket = socket::accept(fd_, &clientAddr);
+
     Logger::logger << ("Accept a connection: " + std::to_string(clientSocket));
     Logger::logger << clientAddr.toIpPort();
 }
 
-void Acceptor::stop(double delay)
+void Acceptor::stop()
 {
-    ioContext_->remove(this);
 }
 
 } // namespace tcp

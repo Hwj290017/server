@@ -9,11 +9,10 @@ class Poller
   public:
     enum class Type
     {
-        kReadable,
-        kWriteable,
-        kBoth,
-        kStopped,
-        kNone
+        kNone = 0,
+        kReadable = 1,
+        kWriteable = 2,
+        kBoth = 3
     };
 
     using ActiveObj = std::pair<void*, Type>;

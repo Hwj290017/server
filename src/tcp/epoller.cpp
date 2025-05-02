@@ -44,9 +44,9 @@ auto Epoller::poll(int timeout) -> std::vector<ActiveObj>
 
 void Epoller::update(int fd, void* data, Type type)
 {
-    assert(fd >= 0 && data != nullptr && type != Type::kNone);
+    assert(fd >= 0);
     auto it = attachedFds_.find(fd);
-    if (type != Type::kStopped)
+    if (type != Type::kNone)
     {
         epoll_event ev;
         ev.events = 0;

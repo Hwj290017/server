@@ -1,26 +1,18 @@
 #pragma once
 
-#include "tcp/acceptorId.h"
-#include "tcp/connectionid.h"
-#include "tcp/connectorid.h"
+#include <cstddef>
+#include <functional>
 #include <memory>
-#include <vector>
 namespace tcp
 {
 
 class IoContextId
 {
   public:
-    using IoContextTask = std::function<void(IoContextId)>;
-
-    std::vector<AcceptorId> getAllAcceptorId() const;
-    std::vector<ConnectionId> getAllConnectionId() const;
-    std::vector<ConnectorId> getAllConnectorId() const;
-    void addAcceptor(AcceptorId id);
-    void removeAcceptor(AcceptorId id);
-    void addConnector(ConnectorId id);
-    void removeConnector(ConnectorId id);
-    void doTask(IoContextId);
+    using Task = std::function<void()>;
+    IoContextId();
+    void runTask(const Task& task, double delay = 0.0, double interval = 0.0);
+    std::size_t id();
 
   private:
     struct Impl;

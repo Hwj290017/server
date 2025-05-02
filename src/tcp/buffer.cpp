@@ -6,7 +6,8 @@
 #include <cstring>
 #include <unistd.h>
 #include <vector>
-
+namespace tcp
+{
 void Buffer::append(const char* data, int length)
 {
     ableAppend(length);
@@ -82,14 +83,26 @@ void Buffer::ablePrepend(int length)
     }
 }
 
-int Buffer::readSocket(const Socket& socket)
+bool Buffer::readSocket(int socket)
 {
     // 由于使用非阻塞IO，读取客户端buffer，一次读取buf大小数据，直到全部读取完毕
-    ableAppend(initialLength);
-    int readNum = socket.read(data_.data() + endIndex_, data_.size() - endIndex_);
-
-    if (readNum > 0)
-        endIndex_ += readNum;
-
-    return readNum;
+    std::size_t readNumTotal = 0;
+    while (true)
+    {
+        ableAppend(initialLength);
+        auto ableAppendLength = data_.size() - endIndex_;
+        int readNum = socket::readNoBlock(socket, data_.data() + endIndex_, ableAppendLength);
+        if (readNum > 0)
+        {
+            readNumTotal += readNum;
+            endIndex_ += readNum;
+        }
+        else if (readNum <= 0)
+            break;
+    }
+    if (readNumTotal <= 0)
+        return false;
+    return true;
 }
+
+} // namespace tcp

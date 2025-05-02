@@ -1,37 +1,30 @@
 #pragma once
 
-#include <atomic>
 #include <cassert>
-#include <cstddef>
 #include <sys/types.h>
 #include <unistd.h>
 namespace tcp
 {
-class IoContext;
 
-class IoObject
+class IoContext;
+class Object
 {
   public:
     virtual void onRead() {};
     virtual void onWrite() {};
     int fd() const;
-    std::size_t id() const;
 
   protected:
-    IoObject(int fd, IoContext* context) : fd_(fd), ioContext_(context), id_(nextId_++)
+    Object(int fd, IoContext* ioContext) : fd_(fd), ioContext_(ioContext)
     {
     }
-    ~IoObject()
+    ~Object()
     {
         assert(fd_ >= 0);
         ::close(fd_);
     }
     int fd_;
     IoContext* ioContext_;
-
-  private:
-    std::size_t id_;
-    static std::atomic<std::size_t> nextId_;
 };
 
 } // namespace tcp

@@ -2,10 +2,8 @@
 
 namespace tcp
 {
-
 class ConnectorId
 {
-  public:
 };
 
 } // namespace tcp

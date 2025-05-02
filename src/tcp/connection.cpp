@@ -1,23 +1,23 @@
 #include "connection.h"
+#include "acceptorId.h"
+#include "connectionid.h"
 #include "iocontext.h"
-#include "ioobject.h"
-#include "log.h"
-#include "socket.h"
-#include "timer.h"
+#include "log/log.h"
+#include "object.h"
+#include "sharedobject.h"
 #include <cassert>
 #include <cerrno>
 #include <cstddef>
 #include <fcntl.h>
-#include <functional>
-#include <mutex>
 #include <string>
 #include <sys/types.h>
 #include <unistd.h>
 namespace tcp
 {
-Connection::Connection(int clientSocket, const InetAddress& clientAddr, IoContext* ioContext, Acceptor* acceptor)
+Connection::Connection(int clientSocket, IoContext* ioContext, std::size_t id, const AcceptorId& acceptorId,
+                       const InetAddress& clientAddr)
 
-    : IoObject(clientSocket, ioContext), addr_(clientAddr), state_(Connected)
+    : SharedObject(clientSocket, ioContext, id, acceptorId), addr_(clientAddr)
 {
 }
 
@@ -30,24 +30,13 @@ void Connection::start()
     ioContext_->enableRead(this);
 }
 
-void Connection::send(const char* data, size_t len)
+void Connection::stop()
 {
-    send(std::string(data, len));
-}
-void Connection::send(const std::string& data)
-{
-    if (state_ == Connected)
-    {
-        ioContext_->runInThread([this, data]() {});
-    }
+    ioContext_->disableRead(this);
 }
 
 void Connection::send(std::string&& data)
 {
-    if (state_ == Connected)
-    {
-        ioContext_->runInThread([this, data = std::move(data)]() {});
-    }
 }
 // void Connection::sendInLoop(const char* data, size_t len)
 // {
@@ -77,52 +66,43 @@ void Connection::send(std::string&& data)
 //     }
 // }
 
-// void TcpConnection::handleWrite()
-// {
-//     if (state_ == Connected)
-//     {
-//         auto writeNum = writeNonBlock(writeBuffer_.begin(), writeBuffer_.size());
-//         Logger::logger << ("TcpConnection handleWrite: " + std::to_string(id_) +
-//                            "\nWriteNum: " + std::to_string(writeNum));
+void Connection::onWrite()
+{
+    Logger::logger << ("TcpConnection handleWrite: " + id().toString() + "\nWriteNum: " + std::to_string(writeNum));
 
-//         if (writeNum < 0)
-//         {
-//             close();
-//             return;
-//         }
+    if (writeNum < 0)
+    {
+        close();
+        return;
+    }
 
-//         if (writeBuffer_.size() > 0)
-//         {
-//             // 未写完
-//             channel_.enableWrite();
-//             loop_->updateChannel(&channel_);
-//         }
-//         else
-//             writeBuffer_.clear();
-//     }
-// }
+    if (writeBuffer_.size() > 0)
+    {
+        // 未写完
+        channel_.enableWrite();
+        loop_->updateChannel(&channel_);
+    }
+    else
+        writeBuffer_.clear();
+}
 
-// void TcpConnection::handleRead()
-// {
-//     if (state_ == Connected)
-//     {
-//         auto readNum = readNonBlock();
-//         Logger::logger << ("TcpConnection handleRead: " + std::to_string(id_) +
-//                            "\nReadNum: " + std::to_string(readNum));
+void Connection::onRead()
+{
 
-//         if (readNum <= 0)
-//         {
-//             close();
-//             return;
-//         }
+    Logger::logger << ("TcpConnection handleRead: " + id_.toString());
 
-//         else if (messageCb_)
-//         {
-//             messageCb_(this, readBuffer_, TimeSpec({10}));
-//             readBuffer_.clear();
-//         }
-//     }
-// }
+    auto success = readBuffer_.readSocket(fd_);
+    if (success)
+    {
+        if (afterReadTask_)
+            afterReadTask_(ConnectionId(id_, pool_), readBuffer_.begin(), readBuffer_.size());
+    }
+    else
+    {
+        stop();
+    }
+}
+}
 
 // int TcpConnection::writeNonBlock(const char* data, size_t len)
 // {
@@ -189,18 +169,6 @@ void Connection::send(std::string&& data)
 //     }
 // }
 // 暂时没处理延时关闭
-void Connection::close(double delay)
-{
-    // 多个线程可能同时调用close
-    if (state_.exchange(DisConnected) == Connected)
-    {
-        if (delay > 0.0)
-        {
-        }
-        else
-            ioContext_->remove(this);
-    }
-}
 
 // void TcpConnection::closeAfter(double delay)
 // {

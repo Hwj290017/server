@@ -13,7 +13,7 @@ class IoContextPool
     using IoContextPtr = std::unique_ptr<IoContext>;
     static constexpr std::size_t kInitialIoContextNum = 8;
 
-    IoContext* getIoContext();
+    IoContext* getIoContext(std::size_t id = 0);
     void start();
     static IoContextPool& instance();
 

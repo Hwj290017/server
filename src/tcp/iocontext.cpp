@@ -19,36 +19,11 @@ IoContext::IoContext() : poller_(new Epoller()), waker(this), tasks_(), state_(k
 }
 
 IoContext::~IoContext() = default;
-void IoContext::addAcceptor(InetAddress listenAddr)
+void IoContext::add(SharedPtr ioObject)
 {
-    runInThread([this, listenAddr]() {
-        auto acceptor = std::make_unique<Acceptor>(this, listenAddr);
-        auto id = acceptor->id();
-        this->ioObjects_[id] = std::move(acceptor);
-        enableRead(id);
-    });
+    ioObjects_[ioObject->id()] = ioObject;
 }
 
-void IoContext::addConnection(int clientSocket, InetAddress clientAddr, Acceptor* acceptor)
-{
-    runInThread([this, clientSocket, clientAddr, acceptor]() {
-        auto connection = std::make_unique<Connection>(clientSocket, clientAddr, this, acceptor);
-        ioObjects_[connection->id()] = std::move(connection);
-        // 默认自动可读
-        updateIoObject(connection.get(), Type::kReadable);
-    });
-}
-
-void IoContext::updateIoObject(IoObject* object, Type type)
-{
-    auto it = ioObjects_.find(object->id());
-    // 一定在？
-    assert(it != ioObjects_.end());
-    if (type == Type::kReadable)
-    {
-        re
-    }
-}
 void IoContext::start()
 {
     threadId_ = std::this_thread::get_id();
@@ -91,10 +66,8 @@ bool IoContext::inOwnThread() const
 
 void IoContext::remove(IoObject* object)
 {
-    runInThread([this, object]() {
-        poller_->update(object->fd(), object, Poller::Type::kStopped);
-        ioObjects_.erase(object->id());
-    });
+    poller_->update(object->fd(), object, Poller::Type::kStopped);
+    ioObjects_.erase(object->id());
 }
 void IoContext::Waker::wakeup()
 {

@@ -1,9 +1,7 @@
 
 #pragma once
 
-#include "acceptor.h"
-#include "inetAddress.h"
-#include "ioobject.h"
+#include "sharedobject.h"
 #include <cassert>
 #include <cstddef>
 #include <functional>
@@ -15,9 +13,8 @@
 #include <vector>
 namespace tcp
 {
-#define MAX_EVENTS 1024
 class Poller;
-
+class SharedObject;
 class IoContext
 {
     using Task = std::function<void()>;
@@ -25,30 +22,24 @@ class IoContext
   public:
     IoContext();
     ~IoContext();
-    void start();
 
-    // void stop()
-    // {
-    //     runInThread([this]() { stopInThread(); });
-    // }
-    void addAcceptor(InetAddress listenAddr);
-    void addConnection(int clientSocket, InetAddress clientAddr, Acceptor* acceptor);
-    void remove(size_t id);
-    void enableRead(size_t id);
-    void disableRead(size_t id);
-    void enableWrite(size_t id);
-    void disableWrite(size_t id);
-
-    void addTask(Task&& task);
-    template <typename T> void runInThread(T&& task, double delay = 0.0, double interval = 0.0)
+    // 以下接口由调用方保证保证在同一个线程中调用
+    void start(std::size_t id, double delay = 0.0);
+    void send(std::size_t connId, const void* data, std::size_t len);
+    void setAfterReadTask(std::size_t connId, const Task& task);
+    void setAfterWriteTask(std::size_t connId, const Task& task);
+    void setConnectTask(std::size_t connId, const Task& task);
+    void setDisconnectTask(std::size_t connId, const Task& task);
+    void stop(std::size_t id, double delay = 0.0);
+    template <typename T> void runTask(T&& task, double delay = 0.0, double interval = 0.0)
     {
-        if (isOwnThread())
+        if (inOwnThread())
             task();
         else
-            queueInThread(std::forward<T>(task));
+            queueTask(std::forward<T>(task));
     }
 
-    template <typename T> void queueInThread(T&& task)
+    template <typename T> void queueTask(T&& task)
     {
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -69,21 +60,21 @@ class IoContext
         CallingTasks,
         Waiting
     };
-    class Waker : public IoObject
+    class Waker : public Object
     {
       public:
-        Waker(IoContext* context);
+        Waker();
         void onRead() override;
         void wakeup();
     };
-    void threadFunc();
-    void stopInThread();
-    std::unordered_map<std::size_t, std::unique_ptr<IoObject>> ioObjects_;
+
     std::unique_ptr<Poller> poller_;
     std::vector<Task> tasks_;
     Waker waker;
     std::mutex mutex_;
     State state_;
     std::thread::id threadId_;
+    std::size_t id_;
+    static std::atomic<std::size_t> nextId_;
 };
 } // namespace tcp

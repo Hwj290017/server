@@ -1,29 +1,20 @@
 #pragma once
 
-#include <functional>
+#include "tcp/inetAddress.h"
+#include "tcp/iocontextid.h"
+#include <cstddef>
 #include <memory>
 
 namespace tcp
 {
-class ConnectionId;
-class IoContextId;
 class AcceptorId
 {
   public:
-    using BeforeAcceptTask = std::function<void(AcceptorId)>;
-    using AfterAcceptTask = std::function<void(const AcceptorId&, const ConnectionId&, IoContextId*)>;
-    using AcceptorTask = std::function<void(AcceptorId)>;
-
-    // 在接受连接前执行任务
-    void beforeAccept(BeforeAcceptTask task);
-    // 在接受连接后执行任务
-    void afterAccept(AfterAcceptTask task);
-    // 执行任务
-    void doTask(AcceptorTask task, double delay = 0.0, double interval = 0.0);
-    // 获取事件循环
-    void getIoContextId();
-    // 设置事件循环
-    void setIoContextId(IoContextId id);
+    AcceptorId(const InetAddress& listenAddr, IoContextId ioContextId);
+    ~AcceptorId();
+    void start(double delay = 0.0);
+    void stop(double delay = 0.0);
+    std::size_t id() const;
 
   private:
     struct Impl;

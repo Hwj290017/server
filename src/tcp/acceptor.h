@@ -1,29 +1,23 @@
 #pragma once
-#include "inetAddress.h"
-#include "ioobject.h"
-#include "tcp/acceptorid.h"
+#include "sharedobject.h"
+#include "tcp/inetAddress.h"
 #include <cstddef>
-#include <memory>
-#include <unordered_map>
 namespace tcp
 {
-class Connection;
+class IoContext;
 
-class Acceptor : public IoObject
+class Acceptor : public SharedObject
 {
   public:
-    using AfterAcceptTask = std::function<void(Acceptor*, Connection*)>;
-    Acceptor(IoContext* context, const InetAddress& addr);
+    Acceptor(std::size_t id, IoContext* context, std::size_t parent, const InetAddress& addr);
     ~Acceptor();
+    // 由pool在自己线程执行，以下线程不安全
     void start();
-    void afterAccept(AfterAcceptTask task);
-    void stop(double delay = 0.0);
     void onRead() override;
+    void stop();
 
   private:
-    IoContext* ioContext_;
     InetAddress addr_;
-    AfterAcceptTask afterAcceptTask_;
 };
 
 } // namespace tcp

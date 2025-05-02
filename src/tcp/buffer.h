@@ -1,8 +1,9 @@
-#ifndef BUFFER_H
-#define BUFFER_H
+#pragma once
 #include <string>
 #include <vector>
-class Socket;
+namespace tcp
+{
+
 class Buffer
 {
   public:
@@ -53,8 +54,8 @@ class Buffer
         else
             endIndex_ = beginIndex_ = pretendedLength;
     }
-
-    int readSocket(const Socket& socket);
+    // 成功返回true，失败返回false
+    bool readSocket(int fd);
 
   private:
     // 确保有足够的后写空间
@@ -66,5 +67,4 @@ class Buffer
     int beginIndex_;
     int endIndex_;
 };
-
-#endif // BUFFER_H
+} // namespace tcp
