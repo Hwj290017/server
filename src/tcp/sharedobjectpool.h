@@ -15,6 +15,7 @@ class SharedObjectPool
     std::size_t getConnector(const InetAddress& serverAddr, IoContext* ioContext);
     SharedObject* getObject(std::size_t id);
     IoContext* getIoContext(std::size_t id);
+    SharedObject* getParent(std::size_t id);
     static SharedObjectPool& instance();
 };
 

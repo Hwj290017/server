@@ -10,6 +10,8 @@ class SharedObject : public Object
   public:
     SharedObject(int fd, IoContext* ioContext, std::size_t id, std::size_t parent);
     ~SharedObject();
+    virtual void start();
+    virtual void stop();
 
   protected:
     std::size_t id_;

@@ -3,7 +3,6 @@
 #include "buffer.h"
 #include "sharedobject.h"
 #include <any>
-#include <atomic>
 #include <cstddef>
 #include <functional>
 namespace tcp
@@ -23,11 +22,11 @@ class Connection : public SharedObject
     using AfterReadTask = std::function<void(const ConnectionId&, const void*, std::size_t)>;
     using StopTask = std::function<void()>;
     // loop为nullptr表示客户端建立的
-    Connection(int clientSocket, IoContext* ioContext, std::size_t id, const AcceptorId& acceptorId,
+    Connection(int clientSocket, IoContext* ioContext, std::size_t id, std::size_t parent,
                const InetAddress& clientAddr);
     ~Connection();
-    void start();
-    void stop();
+    void start() override;
+    void stop() override;
     void send(const char* data, size_t len);
     void send(const std::string& data);
     void send(std::string&& data);

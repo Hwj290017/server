@@ -12,16 +12,11 @@ class ConnectionId : public SharedObjectId
     using ConnectTask = std::function<void(ConnectionId)>;
     using DisconnectTask = std::function<void(ConnectionId)>;
 
-    void start(double delay = 0.0);
-    void stop(double delay = 0.0);
+    ConnectionId(std::size_t id);
     void send(const void* data, std::size_t size);
     void setAfterReadTask(AfterReadTask task);
     void setDisconnectTask(ConnectTask task);
     void setConnectTask(DisconnectTask task);
-
-  private:
-    ConnectionId(std::size_t id);
-    friend class Server;
 };
 
 } // namespace tcp

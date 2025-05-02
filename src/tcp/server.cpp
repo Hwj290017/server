@@ -1,31 +1,39 @@
-#include "server.h"
+#include "tcp/server.h"
 #include "connection.h"
-#include "ioobject.h"
-#include "sharedioobject.h"
+#include "iocontextpool.h"
+#include "sharedobjectpool.h"
+#include "tcp/acceptorid.h"
+#include "tcp/connectorid.h"
 #include <cassert>
-#include <memory>
 namespace tcp
 {
-
-auto Server::makeAcceptor(const InetAddress& listenAddr, SharedIoObject* parent) -> std::shared_ptr<Acceptor>
+// struct Server::Impl{};
+AcceptorId Server::newAcceptor(const InetAddress& listenAddr, std::size_t parent)
 {
-    // 最开始的acceptor创建
+    // acceptor创建
     IoContext* ioContext = nullptr;
-    if (!parent)
+    auto& objectPool = SharedObjectPool::instance();
+    if (parent <= 0)
     {
-        ioContext = ioContextpool_.getIoContext();
-        return std::make_shared<Acceptor>(ioContext, listenAddr, nullptr);
+        ioContext = IoContextPool::instance().getIoContext();
+        return AcceptorId(objectPool.getAcceptor(listenAddr, ioContext), parent);
     }
-    ioContext = parent->ioContext();
-    return std::make_shared<Acceptor>(ioContext, listenAddr, parent->weak_from_this());
+    ioContext = objectPool.getIoContext(parent);
+    return AcceptorId(objectPool.getAcceptor(listenAddr, ioContext), parent);
 }
 
-auto Server::makeConnection(int sockfd, const InetAddress& peerAddr, SharedIoObject* parent)
-    -> std::shared_ptr<Connection>
+ConnectorId Server::newConnector(const InetAddress& serverAddr, std::size_t parent)
 {
-    assert(sockfd >= 0 && parent != nullptr);
-    auto ioContext = ioContextpool_.getIoContext();
-    return std::make_shared<Connection>(ioContext, sockfd, peerAddr, parent->weak_from_this());
+    IoContext* ioContext = nullptr;
+    auto& objectPool = SharedObjectPool::instance();
+    if (parent <= 0)
+    {
+        ioContext = IoContextPool::instance().getIoContext();
+        return ConnectorId(objectPool.getAcceptor(serverAddr, ioContext), parent);
+    }
+    ioContext = objectPool.getIoContext(parent);
+    return ConnectorId(objectPool.getAcceptor(serverAddr, ioContext), parent);
 }
+
 // 新连接创建
 } // namespace tcp

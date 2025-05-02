@@ -1,10 +1,10 @@
 #include "connection.h"
-#include "acceptorId.h"
-#include "connectionid.h"
 #include "iocontext.h"
-#include "log/log.h"
 #include "object.h"
+#include "poller.h"
 #include "sharedobject.h"
+#include "tcp/connectionid.h"
+#include "util/log.h"
 #include <cassert>
 #include <cerrno>
 #include <cstddef>
@@ -14,10 +14,9 @@
 #include <unistd.h>
 namespace tcp
 {
-Connection::Connection(int clientSocket, IoContext* ioContext, std::size_t id, const AcceptorId& acceptorId,
+Connection::Connection(int clientSocket, IoContext* ioContext, std::size_t id, std::size_t parent,
                        const InetAddress& clientAddr)
-
-    : SharedObject(clientSocket, ioContext, id, acceptorId), addr_(clientAddr)
+    : SharedObject(clientSocket, ioContext, id, parent), addr_(clientAddr)
 {
 }
 
@@ -27,12 +26,16 @@ Connection::~Connection()
 
 void Connection::start()
 {
-    ioContext_->enableRead(this);
+    if (connectTask_)
+        connectTask_(ConnectionId(id_, parent_));
+    ioContext_->updateObject(this, Poller::Type::kReadable);
 }
 
 void Connection::stop()
 {
-    ioContext_->disableRead(this);
+    if (disconnectTask_)
+        disconnectTask_(ConnectionId(id_, parent_));
+    ioContext_->updateObject(this, Poller::Type::kNone);
 }
 
 void Connection::send(std::string&& data)
@@ -68,7 +71,7 @@ void Connection::send(std::string&& data)
 
 void Connection::onWrite()
 {
-    Logger::logger << ("TcpConnection handleWrite: " + id().toString() + "\nWriteNum: " + std::to_string(writeNum));
+    Logger::logger << ("TcpConnection handleWrite: " + id() + "\nWriteNum: " + std::to_string(writeNum));
 
     if (writeNum < 0)
     {
@@ -89,13 +92,13 @@ void Connection::onWrite()
 void Connection::onRead()
 {
 
-    Logger::logger << ("TcpConnection handleRead: " + id_.toString());
+    Logger::logger << ("TcpConnection handleRead: " + std::to_string(id_));
 
     auto success = readBuffer_.readSocket(fd_);
     if (success)
     {
         if (afterReadTask_)
-            afterReadTask_(ConnectionId(id_, pool_), readBuffer_.begin(), readBuffer_.size());
+            afterReadTask_(ConnectionId(id_, parent_), readBuffer_.begin(), readBuffer_.size());
     }
     else
     {

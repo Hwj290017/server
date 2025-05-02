@@ -13,6 +13,8 @@ class ConnectorId : public SharedObjectId
     using ConnectTask = std::function<void(const ConnectorId&)>;
     using AfterReadTask = std::function<void(const ConnectorId&)>;
     using DisconnectTask = std::function<void(const ConnectorId&)>;
+
+    ConnectorId(std::size_t id);
     void start(double delay = 0.0);
     void stop(double delay = 0.0);
     void send(const void* data, size_t len) const;
@@ -21,10 +23,6 @@ class ConnectorId : public SharedObjectId
     void setAfterReadTask(AfterReadTask task);
     void setDisconnectTask(ConnectTask task);
     void setConnectTask(DisconnectTask task);
-
-  private:
-    ConnectorId(std::size_t id);
-    friend class Server;
 };
 
 } // namespace tcp
