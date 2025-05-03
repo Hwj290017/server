@@ -20,9 +20,7 @@ Connection::Connection(int clientSocket, IoContext* ioContext, std::size_t id, c
 {
 }
 
-Connection::~Connection()
-{
-}
+Connection::~Connection() = default;
 
 void Connection::start()
 {
@@ -36,10 +34,13 @@ void Connection::stop()
     if (state_ == kConnected)
     {
         state_ = kDisconnected;
-        if (disconnectTask_)
-            disconnectTask_(ConnectionId(id_));
-        ioContext_->updateObject(this, Poller::Type::kNone);
-        SharedObjectPool::instance().releaseObject(id_);
+        // 放在队列最后执行
+        ioContext_->queueTask([this]() {
+            if (disconnectTask_)
+                disconnectTask_(ConnectionId(id_));
+            ioContext_->updateObject(this, Poller::Type::kNone);
+            SharedObjectPool::instance().releaseObject(id_);
+        });
     }
 }
 
@@ -94,15 +95,18 @@ void Connection::onRead()
     }
 }
 
-// void TcpConnection::closeInLoop()
-// {
-//     assert(state_ == DisConnected);
-//     if (onConnectionCb_)
-//         onConnectionCb_(this);
-//     channel_.close();
-//     loop_->updateChannel(&channel_);
-//     // 在事件处理完后才关闭连接
-//     loop_->queueInLoop(std::bind(closeCb_, id_));
-// }
+void Connection::setConnectTask(ConnectionId::ConnectTask&& task)
+{
+    connectTask_ = std::move(task);
+}
 
+void Connection::setDisconnectTask(ConnectionId::DisconnectTask&& task)
+{
+    disconnectTask_ = std::move(task);
+}
+
+void Connection::setAfterReadTask(ConnectionId::AfterReadTask&& task)
+{
+    afterReadTask_ = std::move(task);
+}
 } // namespace tcp

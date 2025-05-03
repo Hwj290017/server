@@ -1,9 +1,9 @@
 #include "iocontext.h"
 #include "connection.h"
 #include "epoller.h"
-#include "ioobject.h"
-#include "log.h"
+#include "object.h"
 #include "poller.h"
+#include "util/log.h"
 #include <cassert>
 #include <cstdint>
 #include <string>
@@ -15,13 +15,6 @@ namespace tcp
 {
 IoContext::IoContext() : poller_(new Epoller()), waker(this), tasks_(), state_(kStopped)
 {
-    enableRead(&waker);
-}
-
-IoContext::~IoContext() = default;
-void IoContext::add(SharedPtr ioObject)
-{
-    ioObjects_[ioObject->id()] = ioObject;
 }
 
 void IoContext::start()
@@ -41,9 +34,9 @@ void IoContext::start()
         for (auto [ioObject, activeType] : activeObj)
         {
             if (activeType == Poller::Type::kReadable || activeType == Poller::Type::kBoth)
-                static_cast<IoObject*>(ioObject)->onRead();
+                static_cast<Object*>(ioObject)->onRead();
             if (activeType == Poller::Type::kWriteable || activeType == Poller::Type::kBoth)
-                static_cast<IoObject*>(ioObject)->onWrite();
+                static_cast<Object*>(ioObject)->onWrite();
         }
 
         // 处理任务队列
@@ -64,10 +57,14 @@ bool IoContext::inOwnThread() const
     return threadId_ == std::this_thread::get_id();
 }
 
-void IoContext::remove(IoObject* object)
+void IoContext::updateObject(Object* object, Poller::Type type)
 {
-    poller_->update(object->fd(), object, Poller::Type::kStopped);
-    ioObjects_.erase(object->id());
+    poller_->update(object->fd(), object, type);
+}
+
+IoContext::Waker::Waker(IoContext* ioContext) : Object(eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK), ioContext)
+{
+    ioContext_->updateObject(this, Poller::Type::kReadable);
 }
 void IoContext::Waker::wakeup()
 {

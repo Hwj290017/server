@@ -9,7 +9,6 @@
 #include <mutex>
 #include <sys/eventfd.h>
 #include <thread>
-#include <unordered_map>
 #include <vector>
 namespace tcp
 {
@@ -21,8 +20,10 @@ class IoContext
   public:
     IoContext();
     ~IoContext();
+    void start();
+    void stop();
     // 以下接口由调用方保证保证在同一个线程中调用
-    void updateObject(SharedObject* object, Poller::Type type);
+    void updateObject(Object* object, Poller::Type type);
     // 以下接口线程安全
     std::size_t id();
     template <typename T> void runTask(T&& task, double delay = 0.0, double interval = 0.0)
@@ -57,7 +58,7 @@ class IoContext
     class Waker : public Object
     {
       public:
-        Waker();
+        Waker(IoContext* context);
         void onRead() override;
         void wakeup();
     };
@@ -69,6 +70,5 @@ class IoContext
     State state_;
     std::thread::id threadId_;
     std::size_t id_;
-    static std::atomic<std::size_t> nextId_;
 };
 } // namespace tcp

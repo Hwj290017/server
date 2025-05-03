@@ -1,16 +1,14 @@
-#include "tcp/connectionid.h"
-#include "connection.h"
+#include "tcp/connectorid.h"
+#include "connector.h"
 #include "iocontext.h"
 #include "sharedobjectpool.h"
-#include "tcp/sharedobjectid.h"
-#include <string>
 namespace tcp
 {
-ConnectionId::ConnectionId(std::size_t id) : SharedObjectId(id)
+ConnectorId::ConnectorId(std::size_t id) : SharedObjectId(id)
 {
 }
 
-void ConnectionId::send(const void* data, std::size_t size)
+void ConnectorId::send(const void* data, std::size_t size)
 {
     if (isAlive())
     {
@@ -18,12 +16,12 @@ void ConnectionId::send(const void* data, std::size_t size)
         ioContext->runTask([id = id_, data = std::string(static_cast<const char*>(data), size)]() mutable {
             auto obj = SharedObjectPool::instance().getObject(id);
             if (obj)
-                static_cast<Connection*>(obj)->send(std::move(data));
+                static_cast<Connector*>(obj)->send(std::move(data));
         });
     }
 }
 
-void ConnectionId::setAfterReadTask(const AfterReadTask& task)
+void ConnectorId::setAfterReadTask(const AfterReadTask& task)
 {
     if (isAlive())
     {
@@ -31,12 +29,12 @@ void ConnectionId::setAfterReadTask(const AfterReadTask& task)
         ioContext->runTask([id = id_, task = task]() mutable {
             auto obj = SharedObjectPool::instance().getObject(id);
             if (obj)
-                static_cast<Connection*>(obj)->setAfterReadTask(std::move(task));
+                static_cast<Connector*>(obj)->setAfterReadTask(std::move(task));
         });
     }
 }
 
-void ConnectionId::setConnectTask(const ConnectTask& task)
+void ConnectorId::setConnectTask(const ConnectTask& task)
 {
     if (isAlive())
     {
@@ -44,12 +42,12 @@ void ConnectionId::setConnectTask(const ConnectTask& task)
         ioContext->runTask([id = id_, task = task]() mutable {
             auto obj = SharedObjectPool::instance().getObject(id);
             if (obj)
-                static_cast<Connection*>(obj)->setConnectTask(std::move(task));
+                static_cast<Connector*>(obj)->setConnectTask(std::move(task));
         });
     }
 }
 
-void ConnectionId::setDisconnectTask(const DisconnectTask& task)
+void ConnectorId::setDisconnectTask(const DisconnectTask& task)
 {
     if (isAlive())
     {
@@ -57,7 +55,7 @@ void ConnectionId::setDisconnectTask(const DisconnectTask& task)
         ioContext->runTask([id = id_, task = task]() mutable {
             auto obj = SharedObjectPool::instance().getObject(id);
             if (obj)
-                static_cast<Connection*>(obj)->setDisconnectTask(std::move(task));
+                static_cast<Connector*>(obj)->setDisconnectTask(std::move(task));
         });
     }
 }

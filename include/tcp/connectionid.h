@@ -1,5 +1,6 @@
 #pragma once
 #include "tcp/sharedobjectid.h"
+#include <any>
 #include <cstddef>
 #include <functional>
 #include <memory>
@@ -14,9 +15,11 @@ class ConnectionId : public SharedObjectId
 
     ConnectionId(std::size_t id);
     void send(const void* data, std::size_t size);
-    void setAfterReadTask(AfterReadTask task);
-    void setDisconnectTask(ConnectTask task);
-    void setConnectTask(DisconnectTask task);
+    void setAfterReadTask(const AfterReadTask& task);
+    void setDisconnectTask(const DisconnectTask& task);
+    void setConnectTask(const ConnectTask& task);
+    void setContext(std::any context);
+    std::any& getContext() const;
 };
 
 } // namespace tcp

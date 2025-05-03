@@ -2,26 +2,20 @@
 #include "acceptor.h"
 #include "buffer.h"
 #include "sharedobject.h"
+#include "tcp/connectionid.h"
 #include <any>
 #include <cstddef>
-#include <functional>
+
 namespace tcp
 {
 class IoContext;
 class InetAddress;
-
-class ConnectionId;
 
 class AcceptorId;
 
 class Connection : public SharedObject
 {
   public:
-    using ConnectTask = std::function<void(const ConnectionId&)>;
-    using DisconnectTask = std::function<void(const ConnectionId&)>;
-    using AfterReadTask = std::function<void(const ConnectionId&, const void*, std::size_t)>;
-    using StopTask = std::function<void()>;
-
     enum State
     {
         kConnected,
@@ -32,14 +26,12 @@ class Connection : public SharedObject
     ~Connection();
     void start() override;
     void stop() override;
-    void send(const char* data, size_t len);
-    void send(const std::string& data);
     void send(std::string&& data);
     void onRead() override;
     void onWrite() override;
-    void setConnectTask(ConnectTask&& task);
-    void setDisconnectTask(DisconnectTask&& task);
-    void setAfterReadTask(AfterReadTask&& task);
+    void setConnectTask(ConnectionId::ConnectTask&& task);
+    void setDisconnectTask(ConnectionId::DisconnectTask&& task);
+    void setAfterReadTask(ConnectionId::AfterReadTask&& task);
 
   private:
     InetAddress addr_;
@@ -47,11 +39,11 @@ class Connection : public SharedObject
     Buffer writeBuffer_;
 
     // 连接成功或连接关闭回调
-    ConnectTask connectTask_;
+    ConnectionId::ConnectTask connectTask_;
     // 关闭连接回调，由TcpServer调用
-    DisconnectTask disconnectTask_;
+    ConnectionId::DisconnectTask disconnectTask_;
     // 只有有数据才会触发，读事件没有数据表示客户端关闭连接
-    AfterReadTask afterReadTask_;
+    ConnectionId::AfterReadTask afterReadTask_;
 
     // 读事件处理,客户端发送空数据不会触发读事件
     std::any context_;
