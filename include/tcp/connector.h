@@ -1,38 +1,26 @@
 #pragma once
+#include "tcp/baseobject.h"
 #include "tcp/inetaddress.h"
-#include "tcp/object.h"
 #include "tcp/tempptr.h"
-#include <any>
 #include <cstddef>
 #include <functional>
 #include <memory>
 
 namespace tcp
 {
-class Connector : public Object
+class Connector : public BaseObject<Connector>
 {
   public:
-    using StartTask = std::function<void(TempPtr<Connector>)>;
     using MessageTask = std::function<void(TempPtr<Connector>, const void*, std::size_t)>;
-    using StopTask = std::function<void(TempPtr<Connector>)>;
-
-    struct Tasks
-    {
-        StartTask startTask;
-        MessageTask magssageTask;
-        StopTask stopTask;
-    };
 
     ~Connector();
-    void send(const void* data, size_t len);
-    void setContext(std::any context);
-    std::any& getContext();
+    void send(const void* data, std::size_t size);
 
   private:
-    explicit Connector(const InetAddress& serverAddr, const Tasks& tasks);
-    struct Impl;
-    std::unique_ptr<Impl> impl_;
-    friend class Manager;
+    // 由server实例化
+    explicit Connector(IoContext* ioContext, std::size_t id, const InetAddress& serverAddr, const BaseTasks& baseTasks,
+                       const ReleaseTask& releaseTask);
+    friend class Server;
 };
 
 } // namespace tcp

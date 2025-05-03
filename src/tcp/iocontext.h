@@ -23,7 +23,7 @@ class IoContext
     void start();
     void stop();
     // 以下接口由调用方保证保证在同一个线程中调用
-    void updateChannel(Channel* object, Poller::Type type);
+    void updateChannel(Channel* channel);
 
     template <typename T> void runTask(T&& task, double delay = 0.0, double interval = 0.0)
     {
@@ -58,7 +58,7 @@ class IoContext
     {
       public:
         Waker();
-        void onRead() override;
+        void onRead();
         void wakeup();
     };
 

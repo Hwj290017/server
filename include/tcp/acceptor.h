@@ -1,6 +1,5 @@
 #pragma once
-
-#include "object.h"
+#include "tcp/baseobject.h"
 #include "tcp/connection.h"
 #include "tcp/inetaddress.h"
 #include "tcp/tempptr.h"
@@ -8,30 +7,19 @@
 #include <functional>
 namespace tcp
 {
-class Acceptor : public Object
+class Acceptor : public BaseObject<Acceptor>
 {
   public:
     // 在接收连接是获取连接的回调,返回值表示是否接收连接
-    using StartTask = std::function<void(TempPtr<Acceptor>)>;
-    using AcceptTask = std::function<bool(TempPtr<Acceptor>, const InetAddress& peerAddr, tcp::Connection::Tasks*)>;
-    using StopTask = std::function<void(TempPtr<Acceptor>)>;
-
-    struct Tasks
-    {
-        StartTask startTask;
-        AcceptTask acceptTask;
-        StopTask stopTask;
-    };
+    using AcceptTask = std::function<void(TempPtr<Acceptor>, int clientfd, const InetAddress& peerAddr)>;
     ~Acceptor();
 
   private:
-    using NewConnectionTask = std::function<void(int, const InetAddress&)>;
-    using ReleaseTask = std::function<void(std::size_t)>;
-    explicit Acceptor(const InetAddress& listenAddr, const AcceptTask& acceptTask,
-                      const NewConnectionTask& newConnectionTask, const ReleaseTask& releaseTask);
-    struct Impl;
-    std::unique_ptr<Impl> impl_;
-    friend class Manager;
+    // 由server负责实例化
+    explicit Acceptor(IoContext* ioContext, std::size_t id, const BaseTasks& baseTasks, const ReleaseTask& releaseTask,
+                      const InetAddress& listenAddr, const AcceptTask& acceptTask);
+    friend class Server;
 };
 
+extern template class BaseObject<Acceptor>;
 } // namespace tcp

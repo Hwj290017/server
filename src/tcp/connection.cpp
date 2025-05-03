@@ -1,10 +1,8 @@
-#include "connection.h"
+#include "tcp/connection.h"
+#include "baseobjectimpl.h"
+#include "buffer.h"
 #include "iocontext.h"
-#include "object.h"
-#include "poller.h"
-#include "sharedobject.h"
-#include "sharedobjectpool.h"
-#include "tcp/connectionid.h"
+#include "tcp/inetaddress.h"
 #include "util/log.h"
 #include <cassert>
 #include <cerrno>
@@ -15,44 +13,67 @@
 #include <unistd.h>
 namespace tcp
 {
-Connection::Connection(int clientSocket, IoContext* ioContext, std::size_t id, const InetAddress& clientAddr)
-    : SharedObject(clientSocket, ioContext, id), addr_(clientAddr), state_(kConnected)
+struct Connection::Impl
 {
+    enum State
+    {
+        kConnected,
+        kDisconnectd
+    };
+    InetAddress peerAddr_;
+    MessageTask messageTask_;
+    Buffer readBuffer_;
+    Buffer writeBuffer_;
+    State state_;
+
+    Impl(const InetAddress& peerAddr, const MessageTask& messageTask)
+        : peerAddr_(peerAddr), messageTask_(messageTask), state_(kDisconnectd)
+    {
+    }
+};
+Connection::Connection(int clientfd, IoContext* ioContext, std::size_t id, const BaseTasks& baseTasks,
+                       const ReleaseTask& releaseTask, const InetAddress& peerAddr, const MessageTask& messageTask)
+    : BaseObject(clientfd, ioContext, id, baseTasks, releaseTask), impl_(new Impl(peerAddr, messageTask))
+{
+    baseImpl_->channel_.setReadTask([this, readBuffer = Buffer(), task = messageTask]() mutable {
+        Logger::logger << ("TcpConnection handleRead: " + std::to_string(baseImpl_->id_));
+
+        if (readBuffer.readSocket(baseImpl_->fd_))
+        {
+            if (task)
+                task(this, readBuffer.begin(), readBuffer.size());
+        }
+        else
+        {
+            stop();
+        }
+    });
+    baseImpl_->channel_.setReadTask([this, writeBuffer = Buffer()]() mutable {
+        if (writeBuffer.writeSocket(baseImpl_->fd_, std::string()))
+        {
+            if (writeBuffer.size() > 0)
+            {
+                ioContext_->updateChannel(&baseImpl_->channel_, Poller::Type::kBoth);
+            }
+        }
+        else
+        {
+            stop();
+        }
+    });
 }
 
 Connection::~Connection() = default;
 
-void Connection::start()
-{
-    if (connectTask_)
-        connectTask_(ConnectionId(id_));
-    ioContext_->updateObject(this, Poller::Type::kReadable);
-}
-
-void Connection::stop()
-{
-    if (state_ == kConnected)
-    {
-        state_ = kDisconnected;
-        // 放在队列最后执行
-        ioContext_->queueTask([this]() {
-            if (disconnectTask_)
-                disconnectTask_(ConnectionId(id_));
-            ioContext_->updateObject(this, Poller::Type::kNone);
-            SharedObjectPool::instance().releaseObject(id_);
-        });
-    }
-}
-
-void Connection::send(std::string&& data)
+void Connection::send(const std::string& data)
 {
     if (data.length() > 0)
     {
-        if (writeBuffer_.writeSocket(fd_, data))
+        if (impl_->writeBuffer_.writeSocket(baseImpl_->fd_, data))
         {
-            if (writeBuffer_.size() > 0)
+            if (impl_->writeBuffer_.size() > 0)
             {
-                ioContext_->updateObject(this, Poller::Type::kBoth);
+                baseImpl_->ioContext_->updateChannel(&baseImpl_->channel_, Poller::Type::kBoth);
             }
         }
         else

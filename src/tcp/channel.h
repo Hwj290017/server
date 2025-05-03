@@ -1,5 +1,6 @@
 #pragma once
 #include <cassert>
+#include <functional>
 #include <unistd.h>
 namespace tcp
 {
@@ -7,15 +8,14 @@ class IoContext;
 class Channel
 {
   public:
-    virtual void onRead()
+    using Task = std::function<void()>;
+    enum Type
     {
-    }
-    virtual void onWrite()
-    {
-    }
-    int fd();
-
-  protected:
+        kNone,
+        kReadable,
+        kWriteable,
+        kBoth
+    };
     Channel(int fd) : fd_(fd)
     {
     }
@@ -24,7 +24,41 @@ class Channel
         assert(fd_ >= 0);
         ::close(fd_);
     }
+    void onEvent()
+    {
+        if ((type_ == kReadable || type_ == kBoth) && readTask_)
+            readTask_();
+        if ((type_ == kWriteable || type_ == kBoth) && writeTask_)
+            writeTask_();
+    }
+    void setType(Type type)
+    {
+        type_ = type;
+    }
+    void setExpiredType(Type type)
+    {
+        expiredType_ = type;
+    }
+    void setReadTask(Task&& task)
+    {
+        readTask_ = std::move(task);
+    }
+    void setWriteTask(Task&& task)
+    {
+        writeTask_ = std::move(task);
+    }
+
+    int fd() const
+    {
+        return fd_;
+    }
+
+  protected:
     int fd_;
+    Type type_;
+    Type expiredType_;
+    Task readTask_;
+    Task writeTask_;
 };
 
 } // namespace tcp
