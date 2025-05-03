@@ -1,8 +1,8 @@
 #include "epoller.h"
+#include "channel.h"
 #include <cassert>
 #include <sys/epoll.h>
 #include <unistd.h>
-
 namespace tcp
 {
 Epoller::Epoller() : epfd_(epoll_create1(EPOLL_CLOEXEC))
@@ -24,7 +24,7 @@ auto Epoller::poll(int timeout) -> std::vector<ActiveObj>
 
     for (auto i = 0; i < eventsNum; ++i)
     {
-        auto obj = events_[i].data.ptr;
+        auto obj = static_cast<Channel*>(events_[i].data.ptr);
         auto event = events_[i].events;
         auto type = Type::kNone;
         if (event & EPOLLIN && event & EPOLLOUT)
@@ -42,15 +42,17 @@ auto Epoller::poll(int timeout) -> std::vector<ActiveObj>
     return activeObjs;
 }
 
-void Epoller::update(int fd, void* data, Type type)
+void Epoller::update(Channel* channel, Type type)
 {
+    assert(channel != nullptr);
+    auto fd = channel->fd();
     assert(fd >= 0);
     auto it = attachedFds_.find(fd);
     if (type != Type::kNone)
     {
         epoll_event ev;
         ev.events = 0;
-        ev.data.ptr = data;
+        ev.data.ptr = channel;
         if (type == Type::kReadable || type == Type::kBoth)
         {
             ev.events |= EPOLLIN;

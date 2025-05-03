@@ -1,5 +1,4 @@
 #include "iocontext.h"
-#include "connection.h"
 #include "epoller.h"
 #include "object.h"
 #include "poller.h"
@@ -13,8 +12,9 @@
 #include <vector>
 namespace tcp
 {
-IoContext::IoContext() : poller_(new Epoller()), waker(this), tasks_(), state_(kStopped)
+IoContext::IoContext() : poller_(new Epoller()), waker(), tasks_(), state_(kStopped)
 {
+    this->updateChannel(&waker, Poller::Type::kReadable);
 }
 
 void IoContext::start()
@@ -31,12 +31,12 @@ void IoContext::start()
         Logger::logger << ("activeIoObjects size: " + std::to_string(activeObj.size()));
         // 处理时间
         state_ = HandlingEvents;
-        for (auto [ioObject, activeType] : activeObj)
+        for (auto [channel, activeType] : activeObj)
         {
             if (activeType == Poller::Type::kReadable || activeType == Poller::Type::kBoth)
-                static_cast<Object*>(ioObject)->onRead();
+                channel->onRead();
             if (activeType == Poller::Type::kWriteable || activeType == Poller::Type::kBoth)
-                static_cast<Object*>(ioObject)->onWrite();
+                channel->onWrite();
         }
 
         // 处理任务队列
@@ -57,14 +57,13 @@ bool IoContext::inOwnThread() const
     return threadId_ == std::this_thread::get_id();
 }
 
-void IoContext::updateObject(Object* object, Poller::Type type)
+void IoContext::updateChannel(Channel* channel, Poller::Type type)
 {
-    poller_->update(object->fd(), object, type);
+    poller_->update(channel, type);
 }
 
-IoContext::Waker::Waker(IoContext* ioContext) : Object(eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK), ioContext)
+IoContext::Waker::Waker() : Channel(eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK))
 {
-    ioContext_->updateObject(this, Poller::Type::kReadable);
 }
 void IoContext::Waker::wakeup()
 {

@@ -12,7 +12,7 @@ class Epoller : public Poller
     Epoller();
     ~Epoller() override;
     auto poll(int timeout = -1) -> std::vector<ActiveObj> override;
-    void update(int fd, void* data, Type type) override;
+    void update(Channel* channel, Type type) override;
 
   private:
     epoll_event getEvent(Type type);

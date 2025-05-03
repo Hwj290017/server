@@ -24,13 +24,7 @@ void IoContextPool::start()
     }
 }
 
-IoContext* IoContextPool::getIoContext()
-{
-    currentIndex_ = (currentIndex_ + 1) % ioContextNum_;
-    return ioContexts_[currentIndex_].get();
-}
-
-IoContextPool& IoContextPool::instance()
+void IoContextPool::IoContextPool& IoContextPool::instance()
 {
     static IoContextPool pool;
     return pool;

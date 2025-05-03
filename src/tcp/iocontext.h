@@ -1,7 +1,7 @@
 
 #pragma once
+#include "channel.h"
 #include "poller.h"
-#include "sharedobject.h"
 #include <cassert>
 #include <cstddef>
 #include <functional>
@@ -23,9 +23,8 @@ class IoContext
     void start();
     void stop();
     // 以下接口由调用方保证保证在同一个线程中调用
-    void updateObject(Object* object, Poller::Type type);
-    // 以下接口线程安全
-    std::size_t id();
+    void updateChannel(Channel* object, Poller::Type type);
+
     template <typename T> void runTask(T&& task, double delay = 0.0, double interval = 0.0)
     {
         if (inOwnThread())
@@ -55,10 +54,10 @@ class IoContext
         CallingTasks,
         Waiting
     };
-    class Waker : public Object
+    class Waker : public Channel
     {
       public:
-        Waker(IoContext* context);
+        Waker();
         void onRead() override;
         void wakeup();
     };

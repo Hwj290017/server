@@ -4,6 +4,7 @@
 #include <vector>
 namespace tcp
 {
+class Channel;
 class Poller
 {
   public:
@@ -15,9 +16,9 @@ class Poller
         kBoth = 3
     };
 
-    using ActiveObj = std::pair<void*, Type>;
+    using ActiveObj = std::pair<Channel*, Type>;
     virtual std::vector<ActiveObj> poll(int timeout = -1) = 0;
-    virtual void update(int fd, void* data, Type type) = 0;
+    virtual void update(Channel* channel, Type type) = 0;
     virtual ~Poller() = default;
 };
 } // namespace tcp

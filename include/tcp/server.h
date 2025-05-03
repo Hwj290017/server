@@ -1,8 +1,8 @@
 #pragma once
-#include "tcp/acceptorid.h"
-#include "tcp/connectionid.h"
-#include "tcp/connectorid.h"
-#include <cstddef>
+#include "tcp/acceptor.h"
+#include "tcp/connector.h"
+#include "tcp/object.h"
+
 namespace tcp
 {
 class InetAddress;
@@ -10,14 +10,12 @@ class Server
 {
   public:
     void start();
-    AcceptorId newAcceptor(const InetAddress& listenAddr, std::size_t parent = 0);
-    ConnectorId newConnector(const InetAddress& serverAddr, std::size_t parent = 0);
-    void setAfterReadTask(const ConnectionId::AfterReadTask& task);
-    void setDisconnectTask(const ConnectionId::ConnectTask& task);
-    void setConnectTask(const ConnectionId::DisconnectTask& task);
-    void setAfterReadTask(const ConnectorId::AfterReadTask& task);
-    void setDisconnectTask(const ConnectorId::ConnectTask& task);
-    void setConnectTask(const ConnectorId::DisconnectTask& task);
+    // 加入一个Acceptor
+    void newAcceptor(const InetAddress& listenAddr, const Acceptor::Tasks& tasks, const std::size_t parent = 0);
+    // 加入一个Connector
+    void newConnector(const InetAddress& serverAddr, const Connector::Tasks& tasks, const std::size_t parent = 0);
+
+    void
 };
 
 } // namespace tcp
