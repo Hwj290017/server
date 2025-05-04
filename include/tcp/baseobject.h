@@ -8,13 +8,14 @@
 namespace tcp
 {
 class IoContext;
-
+template <typename T> struct Impl;
 template <typename T> class BaseObject
 {
   public:
     using Task = std::function<void(TempPtr<T>)>;
     using StartTask = std::function<void(TempPtr<T>)>;
     using StopTask = std::function<void(TempPtr<T>)>;
+    using ReleaseTask = std::function<void(std::size_t)>;
     struct BaseTasks
     {
         StartTask startTask;
@@ -30,10 +31,6 @@ template <typename T> class BaseObject
     std::size_t id() const;
 
   protected:
-    using ReleaseTask = std::function<void(std::size_t)>;
-    explicit BaseObject(int fd, IoContext* ioContext, std::size_t id, const BaseTasks& tasks,
-                        const ReleaseTask& releaseTask);
-    template <typename U> struct Impl;
     std::unique_ptr<Impl<T>> impl_;
 };
 } // namespace tcp

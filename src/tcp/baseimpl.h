@@ -5,8 +5,17 @@ namespace tcp
 {
 template <typename T> struct BaseImpl
 {
-    BaseImpl(int fd, std::size_t id, IoContext* ioContext, const typename BaseObject<T>::BaseTasks& baseTasks)
-        : fd_(fd), ioContext_(ioContext), channel_(fd), id_(id), baseTasks_(baseTasks)
+    enum State
+    {
+        kInit,
+        kStarted,
+        kPaused,
+        kStopped
+    };
+    BaseImpl(int fd, std::size_t id, IoContext* ioContext, typename BaseObject<T>::BaseTasks&& baseTasks,
+             typename BaseObject<T>::ReleaseTask&& releaseTask)
+        : fd_(fd), ioContext_(ioContext), channel_(fd), id_(id), baseTasks_(std::move(baseTasks)),
+          releaseTask_(std::move(releaseTask)), state_(kInit)
     {
     }
     int fd_;
@@ -14,7 +23,9 @@ template <typename T> struct BaseImpl
     Channel channel_;
     std::size_t id_;
     typename BaseObject<T>::BaseTasks baseTasks_;
+    typename BaseObject<T>::ReleaseTask releaseTask_;
     std::any context_;
+    State state_;
 };
 
 } // namespace tcp

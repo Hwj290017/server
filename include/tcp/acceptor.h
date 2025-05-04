@@ -16,9 +16,10 @@ class Acceptor : public BaseObject<Acceptor>
 
   private:
     // 由server负责实例化
-    explicit Acceptor(IoContext* ioContext, std::size_t id, const BaseTasks& baseTasks, const ReleaseTask& releaseTask,
-                      const InetAddress& listenAddr, const AcceptTask& acceptTask);
-    friend class Server;
+    explicit Acceptor(IoContext* ioContext, std::size_t id, BaseTasks&& baseTasks, ReleaseTask&& releaseTask,
+                      InetAddress&& listenAddr, AcceptTask&& acceptTask);
+    Acceptor(Acceptor&&) noexcept;
+    friend class BaseObjectPool;
 };
 
 extern template class BaseObject<Acceptor>;

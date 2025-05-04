@@ -14,17 +14,20 @@ class Server
   public:
     void start();
     // 加入一个Acceptor
-    void newAcceptor(const InetAddress& listenAddr, const Acceptor::BaseTasks& baseTasks,
-                     const Acceptor::AcceptTask& acceptTask, const std::size_t parent = 0);
-    void newConnection(int clientfd, const InetAddress& peerAddr, const Connection::BaseTasks& baseTasks,
-                       const Connection::MessageTask& messageTask, const std::size_t parent = 0);
+    std::size_t newAcceptor(const InetAddress& listenAddr, const Acceptor::BaseTasks& baseTasks,
+                            const Acceptor::AcceptTask& acceptTask);
+    std::size_t newConnection(int clientfd, const InetAddress& peerAddr, const Connection::BaseTasks& baseTasks,
+                              const Connection::MessageTask& messageTask);
     // 加入一个Connector
-    void newConnector(const InetAddress& serverAddr, const Connector::BaseTasks& baseTasks,
-                      const Connector::MessageTask& messageTask, const std::size_t parent = 0);
+    std::size_t newConnector(const InetAddress& serverAddr, const Connector::BaseTasks& baseTasks,
+                             const Connector::MessageTask& messageTask);
 
     // 线程安全，对id进行操作
     template <typename T> void doTask(std::size_t id, const std::function<void(TempPtr<T>)>& task);
-    std::size_t getParent(std::size_t id) const;
+
+  private:
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
 };
 
 } // namespace tcp

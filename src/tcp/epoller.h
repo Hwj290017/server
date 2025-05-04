@@ -1,4 +1,4 @@
-
+#pragma once
 #include "poller.h"
 #include <cstddef>
 #include <sys/epoll.h>
@@ -11,14 +11,13 @@ class Epoller : public Poller
   public:
     Epoller();
     ~Epoller() override;
-    auto poll(int timeout = -1) -> std::vector<ActiveObj> override;
-    void update(Channel* channel, Type type) override;
+    auto poll(int timeout = -1) -> std::vector<Channel*> override;
+    void update(Channel* channel) override;
 
   private:
-    epoll_event getEvent(Type type);
     static constexpr std::size_t kEventSize = 1024;
     int epfd_;
     epoll_event events_[kEventSize];
-    std::unordered_map<int, Type> attachedFds_;
+    std::unordered_map<int, Channel*> channels_;
 };
 } // namespace tcp

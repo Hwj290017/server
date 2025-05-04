@@ -17,10 +17,9 @@ class Connector : public BaseObject<Connector>
     void send(const void* data, std::size_t size);
 
   private:
-    // 由server实例化
-    explicit Connector(IoContext* ioContext, std::size_t id, const InetAddress& serverAddr, const BaseTasks& baseTasks,
-                       const ReleaseTask& releaseTask);
-    friend class Server;
+    explicit Connector(IoContext* ioContext, std::size_t id, BaseTasks&& baseTasks, ReleaseTask&& releaseTask,
+                       InetAddress&& serverAddr, MessageTask&& messageTask);
+    friend class BaseObjectPool;
 };
 
 } // namespace tcp

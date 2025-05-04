@@ -20,9 +20,9 @@ class Connection : public BaseObject<Connection>
 
   private:
     // 由server实例化
-    explicit Connection(int clientfd, IoContext* ioContext, std::size_t id, const BaseTasks& baseTasks,
-                        const ReleaseTask& releaseTask, const InetAddress& peerAddr, const MessageTask& messageTask);
-    friend class Server;
+    explicit Connection(int clientfd, IoContext* ioContext, std::size_t id, BaseTasks&& baseTasks,
+                        ReleaseTask&& releaseTask, InetAddress&& peerAddr, MessageTask&& messageTask);
+    friend class BaseObjectPool;
 };
 
 } // namespace tcp

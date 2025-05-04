@@ -31,6 +31,14 @@ class Channel
         if ((type_ == kWriteable || type_ == kBoth) && writeTask_)
             writeTask_();
     }
+    Type type() const
+    {
+        return type_;
+    }
+    Type expiredType() const
+    {
+        return expiredType_;
+    }
     void setType(Type type)
     {
         type_ = type;
@@ -39,6 +47,7 @@ class Channel
     {
         expiredType_ = type;
     }
+
     void setReadTask(Task&& task)
     {
         readTask_ = std::move(task);

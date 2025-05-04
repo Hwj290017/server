@@ -1,6 +1,6 @@
 #include "iocontext.h"
+#include "channel.h"
 #include "epoller.h"
-#include "object.h"
 #include "poller.h"
 #include "util/log.h"
 #include <cassert>
@@ -12,9 +12,8 @@
 #include <vector>
 namespace tcp
 {
-IoContext::IoContext() : poller_(new Epoller()), waker(), tasks_(), state_(kStopped)
+IoContext::IoContext() : poller_(new Epoller()), waker(this), tasks_(), state_(kStopped)
 {
-    this->updateChannel(&waker, Poller::Type::kReadable);
 }
 
 void IoContext::start()
@@ -27,16 +26,13 @@ void IoContext::start()
         std::vector<std::function<void()>> tempTasks;
         // 等待事件
         state_ = Waiting;
-        auto activeObj = poller_->poll(-1);
-        Logger::logger << ("activeIoObjects size: " + std::to_string(activeObj.size()));
+        auto activeChannels = poller_->poll(-1);
+        Logger::logger << ("activeIoObjects size: " + std::to_string(activeChannels.size()));
         // 处理时间
         state_ = HandlingEvents;
-        for (auto [channel, activeType] : activeObj)
+        for (auto channel : activeChannels)
         {
-            if (activeType == Poller::Type::kReadable || activeType == Poller::Type::kBoth)
-                channel->onRead();
-            if (activeType == Poller::Type::kWriteable || activeType == Poller::Type::kBoth)
-                channel->onWrite();
+            channel->onEvent();
         }
 
         // 处理任务队列
@@ -57,25 +53,28 @@ bool IoContext::inOwnThread() const
     return threadId_ == std::this_thread::get_id();
 }
 
-void IoContext::updateChannel(Channel* channel, Poller::Type type)
+void IoContext::updateChannel(Channel* channel)
 {
-    poller_->update(channel, type);
+    poller_->update(channel);
 }
 
-IoContext::Waker::Waker() : Channel(eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK))
+// waker初始化就启动
+IoContext::Waker::Waker(IoContext* ioContext)
+    : fd_(eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK)), channel_(fd_), ioContext_(ioContext)
 {
+    assert(fd_ >= 0);
+    channel_.setType(Channel::kReadable);
+    channel_.setReadTask([this] {
+        uint64_t count;
+        int n = ::read(fd_, reinterpret_cast<char*>(&count), sizeof(count));
+        assert(n == sizeof(count));
+    });
+    ioContext_->updateChannel(&channel_);
 }
 void IoContext::Waker::wakeup()
 {
     uint64_t count = 1;
     int n = ::write(fd_, reinterpret_cast<char*>(&count), sizeof(count));
-    assert(n == sizeof(count));
-}
-
-void IoContext::Waker::onRead()
-{
-    uint64_t count;
-    int n = ::read(fd_, reinterpret_cast<char*>(&count), sizeof(count));
     assert(n == sizeof(count));
 }
 

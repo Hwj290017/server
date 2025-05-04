@@ -22,9 +22,9 @@ class IoContext
     ~IoContext();
     void start();
     void stop();
-    // 以下接口由调用方保证保证在同一个线程中调用
+    // 由调用方保证保证在同一个线程中调用
     void updateChannel(Channel* channel);
-
+    // 以下接口线程安全
     template <typename T> void runTask(T&& task, double delay = 0.0, double interval = 0.0)
     {
         if (inOwnThread())
@@ -43,7 +43,6 @@ class IoContext
         if (state_ != HandlingEvents)
             waker.wakeup();
     }
-
     bool inOwnThread() const;
 
   private:
@@ -54,12 +53,17 @@ class IoContext
         CallingTasks,
         Waiting
     };
-    class Waker : public Channel
+    class Waker
     {
       public:
-        Waker();
+        Waker(IoContext* ioContext);
         void onRead();
         void wakeup();
+
+      private:
+        int fd_;
+        IoContext* ioContext_;
+        Channel channel_;
     };
 
     std::unique_ptr<Poller> poller_;
