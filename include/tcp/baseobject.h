@@ -33,7 +33,7 @@ template <typename T> class BaseObject
     using ReleaseTask = std::function<void(std::size_t)>;
     explicit BaseObject(int fd, IoContext* ioContext, std::size_t id, const BaseTasks& tasks,
                         const ReleaseTask& releaseTask);
-    struct Impl;
-    std::unique_ptr<Impl> impl_;
+    template <typename U> struct Impl;
+    std::unique_ptr<Impl<T>> impl_;
 };
 } // namespace tcp
