@@ -15,15 +15,15 @@
 #include <unistd.h>
 namespace tcp
 {
-Connection::Connection(int clientfd, IoContext* ioContext, std::size_t id, BaseTasks&& baseTasks,
-                       ReleaseTask&& releaseTask, InetAddress&& peerAddr, MessageTask&& messageTask)
+Connection::Connection(int clientfd, IoContext* ioContext, std::size_t id, InetAddress&& peerAddr, Tasks&& tasks,
+                       ReleaseTask&& releaseTask)
 {
-    impl_ = std::make_unique<Impl<Connection>>(clientfd, ioContext, id, std::move(baseTasks), std::move(releaseTask),
-                                               std::move(peerAddr), std::move(messageTask));
+    impl_ = std::make_unique<Impl<Connection>>(clientfd, ioContext, id, std::move(peerAddr), std::move(tasks),
+                                               std::move(releaseTask));
     impl_->channel_.setReadTask([this]() {
         Logger::logger << ("TcpConnection handleRead: " + std::to_string(impl_->id_));
 
-        if (impl_->readBuffer_.readSocket(impl_->fd_))
+        if (impl_->readBuffer_.readSocket(impl_->fd_) >= 0)
         {
             if (impl_->messageTask_)
                 impl_->messageTask_(this, impl_->readBuffer_.begin(), impl_->readBuffer_.size());
@@ -34,7 +34,7 @@ Connection::Connection(int clientfd, IoContext* ioContext, std::size_t id, BaseT
         }
     });
     impl_->channel_.setReadTask([this]() {
-        if (impl_->writeBuffer_.writeSocket(impl_->fd_, std::string()))
+        if (impl_->writeBuffer_.writeSocket(impl_->fd_, std::string()) >= 0)
         {
             if (impl_->writeBuffer_.size() > 0)
             {
@@ -55,7 +55,7 @@ void Connection::send(const std::string& data)
 {
     if (data.length() > 0)
     {
-        if (impl_->writeBuffer_.writeSocket(impl_->fd_, data))
+        if (impl_->writeBuffer_.writeSocket(impl_->fd_, data) >= 0)
         {
             if (impl_->writeBuffer_.size() > 0)
             {

@@ -7,12 +7,11 @@
 #include <memory>
 namespace tcp
 {
-Connector::Connector(IoContext* ioContext, std::size_t id, BaseTasks&& baseTasks, ReleaseTask&& releaseTask,
-                     InetAddress&& serverAddr, MessageTask&& messageTask)
+Connector::Connector(IoContext* ioContext, std::size_t id, InetAddress&& serverAddr, Tasks&& tasks,
+                     ReleaseTask&& releaseTask)
 {
     impl_ = std::make_unique<Impl<Connector>>(socket::createConnectorSocket(serverAddr), ioContext, id,
-                                              std::move(baseTasks), std::move(releaseTask), std::move(serverAddr),
-                                              std::move(messageTask));
+                                              std::move(serverAddr), std::move(tasks), std::move(releaseTask));
     impl_->channel_.setReadTask([this]() {
         if (impl_->readBuffer_.readSocket(impl_->fd_))
         {

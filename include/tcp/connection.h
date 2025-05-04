@@ -11,7 +11,12 @@ class Connection : public BaseObject<Connection>
 {
   public:
     using MessageTask = std::function<void(TempPtr<Connection>, const void*, std::size_t)>;
-
+    struct Tasks
+    {
+        StartTask startTask;
+        StopTask stopTask;
+        MessageTask messageTask;
+    };
     ~Connection();
     // 需要考虑线程安全问题
     void send(const std::string& data);
@@ -20,8 +25,8 @@ class Connection : public BaseObject<Connection>
 
   private:
     // 由server实例化
-    explicit Connection(int clientfd, IoContext* ioContext, std::size_t id, BaseTasks&& baseTasks,
-                        ReleaseTask&& releaseTask, InetAddress&& peerAddr, MessageTask&& messageTask);
+    explicit Connection(int clientfd, IoContext* ioContext, std::size_t id, InetAddress&& peerAddr, Tasks&& tasks,
+                        ReleaseTask&& releaseTask);
     friend class BaseObjectPool;
 };
 

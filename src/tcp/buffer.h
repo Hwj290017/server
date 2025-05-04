@@ -47,16 +47,19 @@ class Buffer
         return data_.data() + endIndex_;
     }
 
+    // 根据传入的长度length，更新beginIndex_和endIndex_的值
     void retrieve(int length)
     {
+        // 如果length小于等于size()，则将beginIndex_增加length
         if (length <= size())
             beginIndex_ += length;
+        // 否则，将beginIndex_和endIndex_都设置为pretendedLength
         else
             endIndex_ = beginIndex_ = pretendedLength;
     }
-    // 成功返回true，失败返回false
-    bool readSocket(int fd);
-    bool writeSocket(int fd, const std::string& data);
+    // 返回读写的字节数，为-1则表示出错
+    int readSocket(int fd);
+    int writeSocket(int fd, const std::string& data);
 
   private:
     // 确保有足够的后写空间

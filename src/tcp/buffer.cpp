@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cerrno>
+#include <cstddef>
 #include <cstring>
 #include <unistd.h>
 #include <vector>
@@ -83,26 +84,42 @@ void Buffer::ablePrepend(int length)
     }
 }
 
-bool Buffer::readSocket(int socket)
+int Buffer::readSocket(int socket)
 {
-    // 由于使用非阻塞IO，读取客户端buffer，一次读取buf大小数据，直到全部读取完毕
-    std::size_t readNumTotal = 0;
+    int readNumTotal = 0;
     while (true)
     {
         ableAppend(initialLength);
         auto ableAppendLength = data_.size() - endIndex_;
-        int readNum = socket::readNoBlock(socket, data_.data() + endIndex_, ableAppendLength);
+        int readNum = socket::readNoBlocking(socket, data_.data() + endIndex_, ableAppendLength);
         if (readNum > 0)
         {
-            readNumTotal += readNum;
             endIndex_ += readNum;
+            readNumTotal += readNum;
         }
-        else if (readNum <= 0)
+        else if (readNum < 0)
+            return -1;
+        else
             break;
     }
-    if (readNumTotal <= 0)
-        return false;
-    return true;
+    return readNumTotal;
 }
 
+int writeSocket(int fd, const std::string& data)
+{
+    size_t writeNumTotal = 0;
+    while (true)
+    {
+        int writeNum = socket::writeNoBlocking(fd, data.data(), data.size());
+        if (writeNum > 0)
+        {
+            writeNumTotal += writeNum;
+        }
+        else if (writeNum < 0)
+            return -1;
+        else
+            break;
+    }
+    return writeNumTotal;
+}
 } // namespace tcp

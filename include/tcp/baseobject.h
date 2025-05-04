@@ -16,11 +16,7 @@ template <typename T> class BaseObject
     using StartTask = std::function<void(TempPtr<T>)>;
     using StopTask = std::function<void(TempPtr<T>)>;
     using ReleaseTask = std::function<void(std::size_t)>;
-    struct BaseTasks
-    {
-        StartTask startTask;
-        StopTask stopTask;
-    };
+
     void start(double deley = 0.0);
     void resume(double deley = 0.0);
     void pause(double deley = 0.0);

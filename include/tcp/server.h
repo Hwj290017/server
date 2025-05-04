@@ -14,13 +14,10 @@ class Server
   public:
     void start();
     // 加入一个Acceptor
-    std::size_t newAcceptor(const InetAddress& listenAddr, const Acceptor::BaseTasks& baseTasks,
-                            const Acceptor::AcceptTask& acceptTask);
-    std::size_t newConnection(int clientfd, const InetAddress& peerAddr, const Connection::BaseTasks& baseTasks,
-                              const Connection::MessageTask& messageTask);
+    std::size_t newAcceptor(const InetAddress& listenAddr, const Acceptor::Tasks& tasks);
+    std::size_t newConnection(int clientfd, const InetAddress& peerAddr, const Connection::Tasks& tasks);
     // 加入一个Connector
-    std::size_t newConnector(const InetAddress& serverAddr, const Connector::BaseTasks& baseTasks,
-                             const Connector::MessageTask& messageTask);
+    std::size_t newConnector(const InetAddress& serverAddr, const Connector::Tasks& tasks);
 
     // 线程安全，对id进行操作
     template <typename T> void doTask(std::size_t id, const std::function<void(TempPtr<T>)>& task);

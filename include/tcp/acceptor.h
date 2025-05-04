@@ -12,12 +12,18 @@ class Acceptor : public BaseObject<Acceptor>
   public:
     // 在接收连接是获取连接的回调,返回值表示是否接收连接
     using AcceptTask = std::function<void(TempPtr<Acceptor>, int clientfd, const InetAddress& peerAddr)>;
+    struct Tasks
+    {
+        StartTask startTask;
+        StopTask stopTask;
+        AcceptTask acceptTask;
+    };
     ~Acceptor();
 
   private:
     // 由server负责实例化
-    explicit Acceptor(IoContext* ioContext, std::size_t id, BaseTasks&& baseTasks, ReleaseTask&& releaseTask,
-                      InetAddress&& listenAddr, AcceptTask&& acceptTask);
+    explicit Acceptor(IoContext* ioContext, std::size_t id, InetAddress&& listenAddr, Tasks&& tasks,
+                      ReleaseTask&& releaseTask);
     Acceptor(Acceptor&&) noexcept;
     friend class BaseObjectPool;
 };

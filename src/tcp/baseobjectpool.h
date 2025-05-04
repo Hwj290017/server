@@ -19,13 +19,11 @@ class BaseObjectPool
     ~BaseObjectPool();
 
     // 不考虑ioContext的线程安全问题
-    std::size_t getAcceptor(const InetAddress& listenAddr, const Acceptor::BaseTasks& baseTasks,
-                            const Acceptor::AcceptTask& acceptTask, IoContext* ioContext);
-    std::size_t getConnection(int clientfd, const InetAddress& peerAddr, const Connection::BaseTasks& baseTasks,
-                              const Connection::MessageTask& messageTask, IoContext* ioContext);
+    std::size_t getAcceptor(const InetAddress& listenAddr, const Acceptor::Tasks& tasks, IoContext* ioContext);
+    std::size_t getConnection(int clientfd, const InetAddress& peerAddr, const Connection::Tasks& tasks,
+                              IoContext* ioContext);
     // 加入一个Connector
-    std::size_t getConnector(const InetAddress& serverAddr, const Connector::BaseTasks& baseTasks,
-                             const Connector::MessageTask& messageTask, IoContext* ioContext);
+    std::size_t getConnector(const InetAddress& serverAddr, const Connector::Tasks& tasks, IoContext* ioContext);
     template <typename T>
     void doTask(std::size_t id, const std::function<void(TempPtr<T>)>& task, IoContext* ioContext);
 

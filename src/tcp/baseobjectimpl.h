@@ -7,6 +7,7 @@
 #include "tcp/baseobject.h"
 #include "tcp/connection.h"
 #include "tcp/connector.h"
+#include "tcp/inetaddress.h"
 #include "tcp/tempptr.h"
 #include <any>
 #include <cstddef>
@@ -17,10 +18,11 @@ namespace tcp
 // 特化AcceptorImpl
 template <> struct Impl<Acceptor> : public BaseImpl<Acceptor>
 {
-    Impl(int fd, IoContext* ioContext, std::size_t id, Acceptor::BaseTasks&& baseTasks,
-         Acceptor::ReleaseTask&& releaseTask, InetAddress&& listenAddr_, const Acceptor::AcceptTask& acceptTask)
-        : BaseImpl<Acceptor>(fd, id, ioContext, std::move(baseTasks), std::move(releaseTask)),
-          listenAddr_(std::move(listenAddr_)), acceptTask_(acceptTask) {};
+    Impl(int fd, IoContext* ioContext, std::size_t id, InetAddress&& listenAddr, Acceptor::Tasks&& Tasks,
+         Acceptor::ReleaseTask&& releaseTask)
+        : BaseImpl<Acceptor>(fd, id, ioContext, std::move(Tasks.startTask), std::move(Tasks.stopTask),
+                             std::move(releaseTask)),
+          listenAddr_(std::move(listenAddr)), acceptTask_(Tasks.acceptTask) {};
     InetAddress listenAddr_;
     Acceptor::AcceptTask acceptTask_;
 };
@@ -28,11 +30,11 @@ template <> struct Impl<Acceptor> : public BaseImpl<Acceptor>
 // 特化ConnectionImpl
 template <> struct Impl<Connection> : public BaseImpl<Connection>
 {
-    Impl(int fd, IoContext* ioContext, std::size_t id, Connection::BaseTasks&& baseTasks,
-         Connection::ReleaseTask&& releaseTaskTasks, InetAddress&& peerAddr_,
-         const Connection::MessageTask& messageTask)
-        : BaseImpl<Connection>(fd, id, ioContext, std::move(baseTasks), std::move(releaseTaskTasks)),
-          peerAddr_(std::move(peerAddr_)), messageTask_(messageTask)
+    Impl(int fd, IoContext* ioContext, std::size_t id, InetAddress&& peerAddr_, Connection::Tasks&& tasks,
+         Connection::ReleaseTask&& releaseTaskTasks)
+        : BaseImpl<Connection>(fd, id, ioContext, std::move(tasks.startTask), std::move(tasks.stopTask),
+                               std::move(releaseTaskTasks)),
+          peerAddr_(std::move(peerAddr_)), messageTask_(tasks.messageTask)
     {
     }
     InetAddress peerAddr_;
@@ -44,11 +46,11 @@ template <> struct Impl<Connection> : public BaseImpl<Connection>
 // 特化ConnectorImpl
 template <> struct Impl<Connector> : public BaseImpl<Connector>
 {
-    Impl(int fd, IoContext* ioContext, std::size_t id, Connector::BaseTasks&& baseTasks,
-         Connection::ReleaseTask&& releaseTaskTasks, InetAddress&& serverAddr,
-         const Connector::MessageTask& massageTask)
-        : BaseImpl<Connector>(fd, id, ioContext, std::move(baseTasks), std::move(releaseTaskTasks)),
-          serverAddr_(std::move(serverAddr)), messageTask_(massageTask)
+    Impl(int fd, IoContext* ioContext, std::size_t id, InetAddress&& serverAddr, Connector::Tasks&& tasks,
+         Connection::ReleaseTask&& releaseTaskTasks)
+        : BaseImpl<Connector>(fd, id, ioContext, std::move(tasks.startTask), std::move(tasks.stopTask),
+                              std::move(releaseTaskTasks)),
+          serverAddr_(std::move(serverAddr)), messageTask_(tasks.messageTask)
     {
     }
     InetAddress serverAddr_;
@@ -67,9 +69,9 @@ template <typename T> void BaseObject<T>::start(double delay)
     static_assert(std::is_base_of_v<BaseImpl<T>, Impl<T>>);
     if (delay <= 0.0)
     {
-        if (impl_->baseTasks_.startTask)
+        if (impl_->startTask_)
         {
-            impl_->baseTasks_.startTask(TempPtr<T>(static_cast<T*>(this)));
+            impl_->startTask_(TempPtr<T>(static_cast<T*>(this)));
         }
         impl_->ioContext_->updateChannel(&impl_->channel_);
     }
@@ -80,9 +82,9 @@ template <typename T> void BaseObject<T>::stop(double delay)
     static_assert(std::is_base_of_v<BaseObject<T>, T>);
     if (delay <= 0.0)
     {
-        if (impl_->baseTasks_.stopTask)
+        if (impl_->stopTask_)
         {
-            impl_->baseTasks_.stopTask(TempPtr<T>(static_cast<T*>(this)));
+            impl_->stopTask_(TempPtr<T>(static_cast<T*>(this)));
         }
         impl_->ioContext_->updateChannel(&impl_->channel_);
         impl_->releaseTask_(impl_->id_);

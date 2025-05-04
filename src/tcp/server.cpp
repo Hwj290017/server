@@ -18,24 +18,21 @@ void Server::start()
     impl_->ioContextPool_.start();
 }
 // 加入一个Acceptor
-std::size_t Server::newAcceptor(const InetAddress& listenAddr, const Acceptor::BaseTasks& baseTasks,
-                                const Acceptor::AcceptTask& acceptTask)
+std::size_t Server::newAcceptor(const InetAddress& listenAddr, const Acceptor::Tasks& tasks)
 {
     auto ioContext = impl_->ioContextPool_.getCurrentIoContext();
-    return impl_->baseObjectPool_.getAcceptor(listenAddr, baseTasks, acceptTask, ioContext);
+    return impl_->baseObjectPool_.getAcceptor(listenAddr, tasks, ioContext);
 }
-std::size_t Server::newConnection(int clientfd, const InetAddress& peerAddr, const Connection::BaseTasks& baseTasks,
-                                  const Connection::MessageTask& messageTask)
+std::size_t Server::newConnection(int clientfd, const InetAddress& peerAddr, const Connection::Tasks& tasks)
 {
     auto ioContext = impl_->ioContextPool_.getCurrentIoContext();
-    return impl_->baseObjectPool_.getConnection(clientfd, peerAddr, baseTasks, messageTask, ioContext);
+    return impl_->baseObjectPool_.getConnection(clientfd, peerAddr, tasks, ioContext);
 }
 // 加入一个Connector
-std::size_t Server::newConnector(const InetAddress& serverAddr, const Connector::BaseTasks& baseTasks,
-                                 const Connector::MessageTask& messageTask)
+std::size_t Server::newConnector(const InetAddress& serverAddr, const Connector::Tasks& tasks)
 {
     auto ioContext = impl_->ioContextPool_.getCurrentIoContext();
-    return impl_->baseObjectPool_.getConnector(serverAddr, baseTasks, messageTask, ioContext);
+    return impl_->baseObjectPool_.getConnector(serverAddr, tasks, ioContext);
 }
 // 线程安全，对id进行操作
 template <typename T> void Server::doTask(std::size_t id, const std::function<void(TempPtr<T>)>& task)

@@ -6,13 +6,12 @@
 namespace tcp
 {
 Acceptor::Acceptor(Acceptor&&) noexcept = default;
-Acceptor::Acceptor(IoContext* ioContext, std::size_t id, BaseTasks&& baseTasks, ReleaseTask&& releaseTask,
-                   InetAddress&& listenAddr, AcceptTask&& acceptTask)
+Acceptor::Acceptor(IoContext* ioContext, std::size_t id, InetAddress&& listenAddr, Tasks&& tasks,
+                   ReleaseTask&& releaseTask)
 {
 
-    impl_ =
-        std::make_unique<Impl<Acceptor>>(socket::createAcceptorSocket(listenAddr), ioContext, id, std::move(baseTasks),
-                                         std::move(releaseTask), std::move(listenAddr), std::move(acceptTask));
+    impl_ = std::make_unique<Impl<Acceptor>>(socket::createAcceptorSocket(listenAddr), ioContext, id,
+                                             std::move(listenAddr), std::move(tasks), std::move(releaseTask));
 
     // 设置读事件
     impl_->channel_.setReadTask([this]() {
