@@ -1,4 +1,5 @@
 #pragma once
+#include "utils/log.h"
 #include <cassert>
 #include <functional>
 #include <unistd.h>
@@ -16,7 +17,7 @@ class Channel
         kWriteable,
         kBoth
     };
-    Channel(int fd) : fd_(fd)
+    Channel(int fd) : fd_(fd), type_(kNone), expiredType_(kNone)
     {
     }
     ~Channel()
@@ -27,7 +28,9 @@ class Channel
     void onEvent()
     {
         if ((type_ == kReadable || type_ == kBoth) && readTask_)
+        {
             readTask_();
+        }
         if ((type_ == kWriteable || type_ == kBoth) && writeTask_)
             writeTask_();
     }

@@ -1,7 +1,7 @@
 #include "tcp/connection.h"
-#include "baseobjectimpl.h"
 #include "buffer.h"
 #include "channel.h"
+#include "connectionimpl.h"
 #include "iocontext.h"
 #include "tcp/inetaddress.h"
 #include "utils/log.h"
@@ -15,11 +15,11 @@
 #include <unistd.h>
 namespace tcp
 {
-Connection::Connection(int clientfd, IoContext* ioContext, std::size_t id, InetAddress&& peerAddr, Tasks&& tasks,
-                       ReleaseTask&& releaseTask)
+Connection::Connection(Connection&& other) noexcept = default;
+Connection::Connection(int clientfd, IoContext* ioContext, std::size_t id, const InetAddress& peerAddr,
+                       const Tasks& tasks, const ReleaseTask& releaseTask)
 {
-    impl_ = std::make_unique<Impl<Connection>>(clientfd, ioContext, id, std::move(peerAddr), std::move(tasks),
-                                               std::move(releaseTask));
+    impl_ = std::make_unique<Impl<Connection>>(clientfd, ioContext, id, peerAddr, tasks, releaseTask);
     impl_->channel_.setReadTask([this]() {
         Logger::logger << ("TcpConnection handleRead: " + std::to_string(impl_->id_));
 
@@ -56,6 +56,25 @@ void Connection::send(const std::string& data)
     if (data.length() > 0)
     {
         if (impl_->writeBuffer_.writeSocket(impl_->fd_, data) >= 0)
+        {
+            if (impl_->writeBuffer_.size() > 0)
+            {
+                impl_->channel_.setType(Channel::Type::kBoth);
+                impl_->ioContext_->updateChannel(&impl_->channel_);
+            }
+        }
+        else
+        {
+            stop();
+        }
+    }
+}
+
+void Connection::send(const void* data, std::size_t len)
+{
+    if (len > 0)
+    {
+        if (impl_->writeBuffer_.writeSocket(impl_->fd_, data, len) >= 0)
         {
             if (impl_->writeBuffer_.size() > 0)
             {

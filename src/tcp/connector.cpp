@@ -1,17 +1,18 @@
 #include "tcp/connector.h"
-#include "baseobjectimpl.h"
 #include "buffer.h"
+#include "connectorimpl.h"
 #include "iocontext.h"
 #include "socket.h"
 #include "utils/log.h"
 #include <memory>
 namespace tcp
 {
-Connector::Connector(IoContext* ioContext, std::size_t id, InetAddress&& serverAddr, Tasks&& tasks,
-                     ReleaseTask&& releaseTask)
+
+Connector::Connector(IoContext* ioContext, std::size_t id, const InetAddress& serverAddr, const Tasks& tasks,
+                     const ReleaseTask& releaseTask)
 {
-    impl_ = std::make_unique<Impl<Connector>>(socket::createConnectorSocket(serverAddr), ioContext, id,
-                                              std::move(serverAddr), std::move(tasks), std::move(releaseTask));
+    impl_ = std::make_unique<Impl<Connector>>(socket::createConnectorSocket(serverAddr), ioContext, id, serverAddr,
+                                              tasks, releaseTask);
     impl_->channel_.setReadTask([this]() {
         if (impl_->readBuffer_.readSocket(impl_->fd_))
         {
@@ -41,7 +42,7 @@ Connector::Connector(IoContext* ioContext, std::size_t id, InetAddress&& serverA
 
 Connector::~Connector() = default;
 
-void Connection::send(const std::string& data)
+void Connector::send(const std::string& data)
 {
     if (data.length() > 0)
     {

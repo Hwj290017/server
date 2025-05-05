@@ -41,15 +41,19 @@ class IoContext
             tasks_.emplace_back(std::forward<T>(task));
         }
         // 无论是不是当前线程，只要不是在处理事件都唤醒
-        if (state_ != HandlingEvents)
+        if (handleState_ != HandlingEvents)
             waker.wakeup();
     }
     bool inOwnThread() const;
 
   private:
-    enum State
+    enum class State
     {
-        kStopped,
+        kStarted,
+        kStopped
+    };
+    enum HandleState
+    {
         HandlingEvents,
         CallingTasks,
         Waiting
@@ -71,6 +75,7 @@ class IoContext
     std::vector<Task> tasks_;
     Waker waker;
     std::mutex mutex_;
+    HandleState handleState_;
     State state_;
     std::thread::id threadId_;
     std::size_t id_;

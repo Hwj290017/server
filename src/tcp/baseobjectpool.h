@@ -6,6 +6,8 @@
 #include "tcp/connector.h"
 #include "tcp/inetaddress.h"
 #include <cstddef>
+#include <memory>
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 namespace tcp
@@ -28,9 +30,11 @@ class BaseObjectPool
     void doTask(std::size_t id, const std::function<void(TempPtr<T>)>& task, IoContext* ioContext);
 
   private:
-    std::unordered_map<size_t, Acceptor> acceptors_;
-    std::unordered_map<size_t, Connection> connections_;
-    std::unordered_map<size_t, Connector> connectors_;
+    std::unordered_map<size_t, std::unique_ptr<Acceptor>> acceptors_;
+    std::unordered_map<size_t, std::unique_ptr<Connection>> connections_;
+    std::unordered_map<size_t, std::unique_ptr<Connector>> connectors_;
+    // 对三个map的访问需要加锁，后续优化
+    std::mutex mutex_;
     // 从1开始，0保留用来表示不存在
     static std::size_t nextId_;
 };

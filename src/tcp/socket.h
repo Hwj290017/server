@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tcp/inetaddress.h"
+#include "utils/log.h"
 #include <cassert>
 #include <cstddef>
 #include <fcntl.h>
@@ -18,6 +19,7 @@ inline auto listen(int acceptorFd, int backlog)
 }
 inline auto accept(int listenFd, InetAddress* clientAddr)
 {
+    Logger::logger << std::string("accepting a client");
     int clientFd = ::accept(listenFd, (sockaddr*)&clientAddr->addr_, &clientAddr->addrLen_);
     assert(clientFd >= 0);
     return clientFd;
@@ -30,6 +32,7 @@ inline auto createAcceptorSocket(const InetAddress& addr)
     assert(fd >= 0);
     fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
     assert(::bind(fd, (sockaddr*)&addr.addr_, addr.addrLen_) >= 0);
+    assert(::listen(fd, SOMAXCONN) >= 0);
     return fd;
 }
 inline auto createConnectorSocket(const InetAddress& addr)

@@ -105,12 +105,12 @@ int Buffer::readSocket(int socket)
     return readNumTotal;
 }
 
-int writeSocket(int fd, const std::string& data)
+int Buffer::writeSocket(int fd, const void* data, size_t len)
 {
     size_t writeNumTotal = 0;
     while (true)
     {
-        int writeNum = socket::writeNoBlocking(fd, data.data(), data.size());
+        int writeNum = socket::writeNoBlocking(fd, data, len);
         if (writeNum > 0)
         {
             writeNumTotal += writeNum;
@@ -120,6 +120,16 @@ int writeSocket(int fd, const std::string& data)
         else
             break;
     }
+    size_t left = len - writeNumTotal;
+    if (left > 0)
+    {
+        append(static_cast<const char*>(data) + writeNumTotal, left);
+    }
     return writeNumTotal;
+}
+
+int Buffer::writeSocket(int fd, const std::string& data)
+{
+    return writeSocket(fd, data.data(), data.size());
 }
 } // namespace tcp

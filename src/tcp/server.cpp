@@ -4,6 +4,7 @@
 #include "iocontextpool.h"
 #include <cassert>
 #include <cstddef>
+#include <memory>
 #include <unordered_map>
 namespace tcp
 {
@@ -13,6 +14,10 @@ struct Server::Impl
     IoContextPool ioContextPool_;
     BaseObjectPool baseObjectPool_;
 };
+Server::Server() : impl_(std::make_unique<Impl>())
+{
+}
+Server::~Server() = default;
 void Server::start()
 {
     impl_->ioContextPool_.start();

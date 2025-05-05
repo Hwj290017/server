@@ -12,6 +12,8 @@ class IoContext;
 class Server
 {
   public:
+    Server();
+    ~Server();
     void start();
     // 加入一个Acceptor
     std::size_t newAcceptor(const InetAddress& listenAddr, const Acceptor::Tasks& tasks);

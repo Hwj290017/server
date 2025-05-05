@@ -12,10 +12,10 @@ template <typename T> struct BaseImpl
         kPaused,
         kStopped
     };
-    BaseImpl(int fd, std::size_t id, IoContext* ioContext, typename BaseObject<T>::StartTask&& startTask,
-             typename BaseObject<T>::StopTask&& stopTask, typename BaseObject<T>::ReleaseTask&& releaseTask)
-        : fd_(fd), ioContext_(ioContext), channel_(fd), id_(id), startTask_(std::move(startTask)),
-          stopTask_(std::move(stopTask)), releaseTask_(std::move(releaseTask)), state_(kInit)
+    BaseImpl(int fd, std::size_t id, IoContext* ioContext, const typename BaseObject<T>::StartTask& startTask,
+             const typename BaseObject<T>::StopTask& stopTask, const typename BaseObject<T>::ReleaseTask& releaseTask)
+        : fd_(fd), ioContext_(ioContext), channel_(fd), id_(id), startTask_(startTask), stopTask_(stopTask),
+          releaseTask_(releaseTask), state_(kInit)
     {
     }
     int fd_;

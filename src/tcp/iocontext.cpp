@@ -12,31 +12,32 @@
 #include <vector>
 namespace tcp
 {
-IoContext::IoContext() : poller_(new Epoller()), waker(this), tasks_(), state_(kStopped)
+IoContext::IoContext() : poller_(new Epoller()), waker(this), tasks_(), state_(State::kStopped), handleState_(Waiting)
 {
 }
-
+IoContext::~IoContext() = default;
 void IoContext::start()
 {
+    state_ = State::kStarted;
     threadId_ = std::this_thread::get_id();
     // 循环执行
-    while (state_ != kStopped)
+    while (state_ != State::kStopped)
     {
         // 创建临时任务队列
         std::vector<std::function<void()>> tempTasks;
         // 等待事件
-        state_ = Waiting;
+        handleState_ = Waiting;
         auto activeChannels = poller_->poll(-1);
         Logger::logger << ("activeIoObjects size: " + std::to_string(activeChannels.size()));
         // 处理时间
-        state_ = HandlingEvents;
+        handleState_ = HandlingEvents;
         for (auto channel : activeChannels)
         {
             channel->onEvent();
         }
 
         // 处理任务队列
-        state_ = CallingTasks;
+        handleState_ = CallingTasks;
         {
             std::lock_guard<std::mutex> lock(mutex_);
             tempTasks.swap(tasks_);
@@ -48,6 +49,11 @@ void IoContext::start()
     }
 }
 
+void IoContext::stop()
+{
+    state_ = State::kStopped;
+    waker.wakeup();
+}
 bool IoContext::inOwnThread() const
 {
     return threadId_ == std::this_thread::get_id();

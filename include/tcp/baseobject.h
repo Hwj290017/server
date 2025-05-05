@@ -12,9 +12,9 @@ template <typename T> struct Impl;
 template <typename T> class BaseObject
 {
   public:
-    using Task = std::function<void(TempPtr<T>)>;
-    using StartTask = std::function<void(TempPtr<T>)>;
-    using StopTask = std::function<void(TempPtr<T>)>;
+    using Task = std::function<void(const TempPtr<T>&)>;
+    using StartTask = std::function<void(const TempPtr<T>&)>;
+    using StopTask = std::function<void(const TempPtr<T>&)>;
     using ReleaseTask = std::function<void(std::size_t)>;
 
     void start(double deley = 0.0);
@@ -25,6 +25,9 @@ template <typename T> class BaseObject
     void setContext(std::any context);
     std::any& getContext();
     std::size_t id() const;
+    BaseObject();
+    ~BaseObject();
+    BaseObject(BaseObject&&) noexcept;
 
   protected:
     std::unique_ptr<Impl<T>> impl_;

@@ -1,4 +1,4 @@
-#pragma once
+
 
 #include "iocontextpool.h"
 #include "iocontext.h"
@@ -12,6 +12,17 @@ IoContextPool::IoContextPool(size_t ioContextNum) : ioContextNum_(ioContextNum),
 {
 }
 
+IoContextPool::~IoContextPool()
+{
+    for (auto& ioContext : ioContexts_)
+    {
+        ioContext.first.stop();
+        if (ioContext.second.joinable())
+        {
+            ioContext.second.join();
+        }
+    }
+}
 void IoContextPool::start()
 {
     for (size_t i = 0; i < ioContextNum_; ++i)
@@ -33,8 +44,9 @@ void IoContextPool::start()
 
 IoContext* IoContextPool::getCurrentIoContext()
 {
-    auto index = indexMap_[std::hash<std::thread::id>()(std::this_thread::get_id())];
-    return &ioContexts_[index].first;
+    // auto index = indexMap_[std::hash<std::thread::id>()(std::this_thread::get_id())];
+    // return &ioContexts_[index].first;
+    return &ioContexts_[0].first;
 }
 // void IoContextPool::runTask()
 } // namespace tcp
