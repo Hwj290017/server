@@ -15,25 +15,23 @@
 #include <unistd.h>
 namespace tcp
 {
-Connection::Connection(Connection&& other) noexcept = default;
 Connection::Connection(int clientfd, IoContext* ioContext, std::size_t id, const InetAddress& peerAddr,
                        const Tasks& tasks, const ReleaseTask& releaseTask)
 {
     impl_ = std::make_unique<Impl<Connection>>(clientfd, ioContext, id, peerAddr, tasks, releaseTask);
     impl_->channel_.setReadTask([this]() {
-        Logger::logger << ("TcpConnection handleRead: " + std::to_string(impl_->id_));
-
         if (impl_->readBuffer_.readSocket(impl_->fd_) >= 0)
         {
             if (impl_->messageTask_)
                 impl_->messageTask_(this, impl_->readBuffer_.begin(), impl_->readBuffer_.size());
+            impl_->readBuffer_.clear();
         }
         else
         {
             stop();
         }
     });
-    impl_->channel_.setReadTask([this]() {
+    impl_->channel_.setWriteTask([this]() {
         if (impl_->writeBuffer_.writeSocket(impl_->fd_, std::string()) >= 0)
         {
             if (impl_->writeBuffer_.size() > 0)
@@ -41,6 +39,7 @@ Connection::Connection(int clientfd, IoContext* ioContext, std::size_t id, const
                 impl_->channel_.setType(Channel::Type::kBoth);
                 impl_->ioContext_->updateChannel(&impl_->channel_);
             }
+            impl_->writeBuffer_.clear();
         }
         else
         {

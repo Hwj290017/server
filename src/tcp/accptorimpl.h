@@ -11,6 +11,8 @@ template <> struct Impl<Acceptor> : public BaseImpl<Acceptor>
          const Acceptor::ReleaseTask& releaseTask)
         : BaseImpl<Acceptor>(fd, id, ioContext, Tasks.startTask, Tasks.stopTask, releaseTask), listenAddr_(listenAddr),
           acceptTask_(Tasks.acceptTask) {};
+    void onRead();
+
     InetAddress listenAddr_;
     Acceptor::AcceptTask acceptTask_;
 };

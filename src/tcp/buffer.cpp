@@ -5,6 +5,7 @@
 #include <cerrno>
 #include <cstddef>
 #include <cstring>
+#include <iostream>
 #include <unistd.h>
 #include <vector>
 namespace tcp
@@ -98,7 +99,10 @@ int Buffer::readSocket(int socket)
             readNumTotal += readNum;
         }
         else if (readNum < 0)
+        {
+            std::cout << "readSocket error" << std::endl;
             return -1;
+        }
         else
             break;
     }
@@ -110,7 +114,7 @@ int Buffer::writeSocket(int fd, const void* data, size_t len)
     size_t writeNumTotal = 0;
     while (true)
     {
-        int writeNum = socket::writeNoBlocking(fd, data, len);
+        int writeNum = socket::writeNoBlocking(fd, static_cast<const char*>(data) + writeNumTotal, len - writeNumTotal);
         if (writeNum > 0)
         {
             writeNumTotal += writeNum;

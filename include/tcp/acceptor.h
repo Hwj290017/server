@@ -22,7 +22,6 @@ class Acceptor : public BaseObject<Acceptor>
     explicit Acceptor(IoContext* ioContext, std::size_t id, const InetAddress& listenAddr, const Tasks& tasks,
                       const ReleaseTask& releaseTask);
     ~Acceptor();
-    Acceptor(Acceptor&&) noexcept;
 };
 
 extern template class BaseObject<Acceptor>;

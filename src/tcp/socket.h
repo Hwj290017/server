@@ -21,6 +21,7 @@ inline auto accept(int listenFd, InetAddress* clientAddr)
 {
     Logger::logger << std::string("accepting a client");
     int clientFd = ::accept(listenFd, (sockaddr*)&clientAddr->addr_, &clientAddr->addrLen_);
+    fcntl(clientFd, F_SETFL, fcntl(clientFd, F_GETFL) | O_NONBLOCK);
     assert(clientFd >= 0);
     return clientFd;
 }
@@ -57,12 +58,16 @@ inline int readNoBlocking(int fd, void* buf, size_t len)
     auto readNum = ::read(fd, buf, len);
     if (readNum <= 0)
     {
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
+        if ((readNum == -1) && (errno == EAGAIN || errno == EWOULDBLOCK))
         {
+            std::cout << "readNoBlocking: no data" << std::endl;
             return 0;
         }
         else
+        {
+            std::cout << "readNoBlocking: error" << std::endl;
             return -1;
+        }
     }
     return readNum;
 }

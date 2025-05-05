@@ -79,5 +79,6 @@ class IoContext
     State state_;
     std::thread::id threadId_;
     std::size_t id_;
+    static constexpr std::size_t kInitialTaskLength = 10;
 };
 } // namespace tcp

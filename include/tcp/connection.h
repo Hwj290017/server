@@ -20,7 +20,6 @@ class Connection : public BaseObject<Connection>
     // 由server实例化
     explicit Connection(int clientfd, IoContext* ioContext, std::size_t id, const InetAddress& peerAddr,
                         const Tasks& tasks, const ReleaseTask& releaseTask);
-    Connection(Connection&& other) noexcept;
     ~Connection();
     // 需要考虑线程安全问题
     void send(const std::string& data);

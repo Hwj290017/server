@@ -1,7 +1,9 @@
 #include "baseobjectpool.h"
+#include "iocontext.h"
 #include "tcp/acceptor.h"
 #include "tcp/connection.h"
 #include "tcp/connector.h"
+#include "tcp/tempptr.h"
 #include <cassert>
 #include <memory>
 
@@ -73,4 +75,14 @@ std::size_t BaseObjectPool::getConnector(const InetAddress& serverAddr, const Co
     nextId_++;
     return id;
 }
+
+IoContext* BaseObjectPool::getAttachedIoContext(size_t id) const
+{
+    auto it = attachedIoContexts_.find(id);
+    if (it == attachedIoContexts_.end())
+        return nullptr;
+    return it->second;
+}
+// template<typename T> void BaseObjectPool::
+// void BaseObjectPool::doTask<>()
 } // namespace tcp

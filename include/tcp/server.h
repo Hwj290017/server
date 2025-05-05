@@ -15,6 +15,7 @@ class Server
     Server();
     ~Server();
     void start();
+    void stop();
     // 加入一个Acceptor
     std::size_t newAcceptor(const InetAddress& listenAddr, const Acceptor::Tasks& tasks);
     std::size_t newConnection(int clientfd, const InetAddress& peerAddr, const Connection::Tasks& tasks);

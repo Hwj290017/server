@@ -32,5 +32,5 @@ int main()
     // task = [&server](int fd) {};
 
     server.start();
-    sleep(50);
+    sleep(100);
 }

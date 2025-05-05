@@ -25,6 +25,7 @@ void IoContext::start()
     {
         // 创建临时任务队列
         std::vector<std::function<void()>> tempTasks;
+        tempTasks.reserve(kInitialTaskLength);
         // 等待事件
         handleState_ = Waiting;
         auto activeChannels = poller_->poll(-1);
@@ -33,6 +34,7 @@ void IoContext::start()
         handleState_ = HandlingEvents;
         for (auto channel : activeChannels)
         {
+            Logger::logger << ("activeIoObject: " + std::to_string(channel->fd()));
             channel->onEvent();
         }
 

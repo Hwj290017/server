@@ -24,7 +24,7 @@ Connector::Connector(IoContext* ioContext, std::size_t id, const InetAddress& se
             stop();
         }
     });
-    impl_->channel_.setReadTask([this]() {
+    impl_->channel_.setWriteTask([this]() {
         if (impl_->writeBuffer_.writeSocket(impl_->fd_, std::string()))
         {
             if (impl_->writeBuffer_.size() > 0)

@@ -5,7 +5,6 @@
 #include <memory>
 namespace tcp
 {
-Acceptor::Acceptor(Acceptor&& other) noexcept = default;
 
 Acceptor::Acceptor(IoContext* ioContext, std::size_t id, const InetAddress& listenAddr, const Tasks& tasks,
                    const ReleaseTask& releaseTask)
@@ -24,6 +23,7 @@ Acceptor::Acceptor(IoContext* ioContext, std::size_t id, const InetAddress& list
         impl_->acceptTask_(this, clientfd, clientAddr);
     });
 }
+
 Acceptor::~Acceptor() = default;
 
 } // namespace tcp
